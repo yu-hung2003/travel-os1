@@ -6,6 +6,7 @@ import { tripRepository } from '@/data/repositories/tripRepository';
 import { typeMeta } from '@/features/timeline/eventMeta';
 import { ProgressRing } from '@/features/dashboard/components/ProgressRing';
 import { gmapsDirectionsUrl } from '@/shared/utils/maps';
+import { WeatherCard } from '@/features/dashboard/components/WeatherCard';
 import type { TimelineEvent, Trip, TripDay } from '@/domain/types';
 
 const WEEKDAY = ['日', '一', '二', '三', '四', '五', '六'];
@@ -157,11 +158,7 @@ export function TodayBoard({ trip, day, now, preview = false }: Props) {
               : '點擊記一筆'}
           </p>
         </Link>
-        <div className="card p-4">
-          <p className="text-xs font-semibold text-ink-2">今日天氣</p>
-          <p className="mt-1.5 text-xl font-bold">☀️ --°C</p>
-          <p className="mt-0.5 text-[11px] text-ink-3">Phase 8 接上即時天氣</p>
-        </div>
+        <WeatherCard day={day} />
       </div>
 
       {/* alerts */}
