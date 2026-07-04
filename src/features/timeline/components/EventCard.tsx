@@ -1,0 +1,87 @@
+import { useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import type { TimelineEvent } from '@/domain/types';
+import { statusMeta, typeMeta } from '@/features/timeline/eventMeta';
+
+interface Props {
+  event: TimelineEvent;
+  onOpen: (event: TimelineEvent) => void;
+}
+
+export function EventCard({ event, onOpen }: Props) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id: event.id });
+
+  const dimmed = event.status === 'skipped' || event.status === 'postponed';
+  const meta = typeMeta[event.type];
+  const status = statusMeta[event.status];
+
+  return (
+    <li
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      className={`card flex items-stretch overflow-hidden ${isDragging ? 'z-10 opacity-90 shadow-lg' : ''}`}
+    >
+      {/* main tappable area */}
+      <button
+        className="flex min-w-0 flex-1 items-start gap-3 p-4 text-left active:bg-surface-3/50"
+        onClick={() => onOpen(event)}
+      >
+        <span className={`mt-0.5 text-xl ${dimmed ? 'grayscale opacity-50' : ''}`}>
+          {event.status === 'completed' ? '✅' : meta.emoji}
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+            {event.startTime && (
+              <span className={`text-xs font-semibold tabular-nums ${dimmed ? 'text-ink-3' : 'text-primary'}`}>
+                {event.startTime}
+                {event.endTime ? `–${event.endTime}` : ''}
+              </span>
+            )}
+            {status.label && (
+              <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${status.badgeCls}`}>
+                {status.label}
+              </span>
+            )}
+            {event.isFavorite && <span className="text-xs">⭐</span>}
+          </span>
+          <span
+            className={`mt-0.5 block text-sm font-semibold leading-snug ${
+              dimmed ? 'text-ink-3' : event.status === 'completed' ? 'text-ink-2' : ''
+            }`}
+          >
+            {event.title}
+          </span>
+          {event.transit?.line && (
+            <span className="mt-0.5 block text-xs text-ink-3">
+              {event.transit.line}
+              {event.transit.farePerAdult ? ` · ¥${event.transit.farePerAdult.toLocaleString()}/大人` : ''}
+            </span>
+          )}
+          {event.alert && event.status === 'scheduled' && (
+            <span className="mt-1 block rounded-lg bg-warning/10 px-2 py-1 text-xs leading-relaxed text-warning">
+              ⚠️ {event.alert}
+            </span>
+          )}
+          {event.note && (
+            <span className="mt-1 block text-xs leading-relaxed text-ink-2">{event.note}</span>
+          )}
+        </span>
+      </button>
+
+      {/* drag handle */}
+      <button
+        aria-label="拖曳排序"
+        {...attributes}
+        {...listeners}
+        className="flex w-10 shrink-0 touch-none items-center justify-center border-l border-line/60 text-ink-3 active:bg-surface-3"
+      >
+        <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor">
+          <circle cx="9" cy="7" r="1.4" /><circle cx="15" cy="7" r="1.4" />
+          <circle cx="9" cy="12" r="1.4" /><circle cx="15" cy="12" r="1.4" />
+          <circle cx="9" cy="17" r="1.4" /><circle cx="15" cy="17" r="1.4" />
+        </svg>
+      </button>
+    </li>
+  );
+}
