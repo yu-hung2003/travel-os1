@@ -18,12 +18,13 @@ export async function ensureSeeded(): Promise<void> {
     return;
   }
 
-  const { trip, days, events, accommodations } = buildKyotoOsakaSeed();
-  await db.transaction('rw', [db.trips, db.days, db.events, db.accommodations, db.prefs], async () => {
+  const { trip, days, events, accommodations, versions } = buildKyotoOsakaSeed();
+  await db.transaction('rw', [db.trips, db.days, db.events, db.accommodations, db.dayVersions, db.prefs], async () => {
     await db.trips.add(trip);
     await db.days.bulkAdd(days);
     await db.events.bulkAdd(events);
     await db.accommodations.bulkAdd(accommodations);
+    await db.dayVersions.bulkAdd(versions);
     const pref = await db.prefs.get('default');
     await db.prefs.put({
       key: 'default',

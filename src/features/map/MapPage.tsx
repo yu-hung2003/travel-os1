@@ -59,13 +59,19 @@ export default function MapPage() {
 
   const pins = useLiveQuery(async () => {
     if (!trip) return [];
-    const [events, days, accommodations, places] = await Promise.all([
+    const [allEvents, days, accommodations, places] = await Promise.all([
       tripRepository.listTripEvents(trip.id),
       tripRepository.listDays(trip.id),
       tripRepository.listAccommodations(trip.id),
       placeRepository.list(trip.id),
     ]);
     const dayIndex = new Map(days.map((d) => [d.id, d.dayIndex]));
+    const activeVersion = new Map(days.map((d) => [d.id, d.activeVersionId]));
+    // show only each day's active version
+    const events = allEvents.filter((e) => {
+      const v = activeVersion.get(e.dayId);
+      return !v || (e.versionId ?? '') === v;
+    });
 
     const out: Pin[] = [];
     for (const e of events) {

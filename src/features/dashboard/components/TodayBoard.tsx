@@ -9,6 +9,7 @@ import { gmapsDirectionsUrl } from '@/shared/utils/maps';
 import { WeatherCard } from '@/features/dashboard/components/WeatherCard';
 import { SmartSuggestions } from '@/features/dashboard/components/SmartSuggestions';
 import type { TimelineEvent, Trip, TripDay } from '@/domain/types';
+import { computeSchedule } from '@/domain/schedule';
 
 const WEEKDAY = ['日', '一', '二', '三', '四', '五', '六'];
 
@@ -33,10 +34,21 @@ interface Props {
 }
 
 export function TodayBoard({ trip, day, now, preview = false }: Props) {
-  const events = useLiveQuery(
-    () => tripRepository.listDayEvents(day.id),
-    [day.id],
+  const rawEvents = useLiveQuery(
+    () => tripRepository.listDayEvents(day.id, day.activeVersionId),
+    [day.id, day.activeVersionId],
   );
+  // adapter: overlay computed arrive/depart onto startTime/endTime so all
+  // downstream logic (countdown, suggestions, alerts) uses the live schedule
+  const events = rawEvents
+    ? (() => {
+        const sched = computeSchedule(day.startTime, rawEvents);
+        return rawEvents.map((e) => {
+          const slot = sched.get(e.id);
+          return slot ? { ...e, startTime: slot.arrive, endTime: slot.depart } : e;
+        });
+      })()
+    : undefined;
   const accommodation = useLiveQuery(
     () => (day.accommodationId ? tripRepository.getAccommodation(day.accommodationId) : Promise.resolve(undefined)),
     [day.accommodationId],

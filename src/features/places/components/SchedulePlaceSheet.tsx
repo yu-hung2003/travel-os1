@@ -28,9 +28,13 @@ export function SchedulePlaceSheet({ place, trip, onClose }: Props) {
     setTime('');
   }, [place?.id]);
 
+  const selectedDay = days?.find((d) => d.id === dayId);
   const dayEvents = useLiveQuery(
-    () => (dayId ? tripRepository.listDayEvents(dayId) : Promise.resolve([])),
-    [dayId],
+    () =>
+      dayId
+        ? tripRepository.listDayEvents(dayId, selectedDay?.activeVersionId)
+        : Promise.resolve([]),
+    [dayId, selectedDay?.activeVersionId],
   );
 
   if (!place || !days) return null;

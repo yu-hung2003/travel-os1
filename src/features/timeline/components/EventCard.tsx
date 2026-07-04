@@ -3,6 +3,7 @@ import { CSS } from '@dnd-kit/utilities';
 import type { TimelineEvent } from '@/domain/types';
 import { statusMeta, typeMeta } from '@/features/timeline/eventMeta';
 import { gmapsDirectionsUrl } from '@/shared/utils/maps';
+import { effectiveDuration, type Slot } from '@/domain/schedule';
 
 const transitModeEmoji: Record<string, string> = {
   walk: '🚶', bus: '🚌', train: '🚃', subway: '🚇', taxi: '🚕', boat: '⛴️', flight: '✈️',
@@ -11,9 +12,15 @@ const transitModeEmoji: Record<string, string> = {
 interface Props {
   event: TimelineEvent;
   onOpen: (event: TimelineEvent) => void;
+  /** computed arrive/depart from the schedule engine */
+  slot?: Slot;
+  /** closing-time warning text, if any */
+  closing?: string;
+  /** transport card whose neighbors changed since its route was set */
+  staleTransit?: boolean;
 }
 
-export function EventCard({ event, onOpen }: Props) {
+export function EventCard({ event, onOpen, slot, closing, staleTransit = false }: Props) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: event.id });
 
@@ -41,12 +48,14 @@ export function EventCard({ event, onOpen }: Props) {
         </span>
         <span className="min-w-0 flex-1">
           <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-            {event.startTime && (
+            {slot ? (
               <span className={`text-xs font-semibold tabular-nums ${dimmed ? 'text-ink-3' : 'text-primary'}`}>
-                {event.startTime}
-                {event.endTime ? `–${event.endTime}` : ''}
+                {slot.arrive}–{slot.depart}
               </span>
-            )}
+            ) : null}
+            <span className="rounded-full bg-surface-3 px-1.5 py-0.5 text-[10px] font-semibold text-ink-2">
+              ⏱ {effectiveDuration(event)}分
+            </span>
             {status.label && (
               <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${status.badgeCls}`}>
                 {status.label}
@@ -81,6 +90,16 @@ export function EventCard({ event, onOpen }: Props) {
                   event.transit.fareNote,
                 ].filter(Boolean).join(' · ')}
               </span>
+            </span>
+          )}
+          {staleTransit && (
+            <span className="mt-1 block rounded-lg bg-warning/15 px-2 py-1 text-xs font-semibold leading-relaxed text-warning">
+              ⚠️ 前後行程已變動,請點選確認/更新此段交通
+            </span>
+          )}
+          {closing && (
+            <span className="mt-1 block rounded-lg bg-danger/10 px-2 py-1 text-xs font-semibold leading-relaxed text-danger">
+              ⏰ {closing}
             </span>
           )}
           {event.alert && event.status === 'scheduled' && (

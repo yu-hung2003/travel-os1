@@ -11,8 +11,14 @@ export const tripRepository = {
   listDays(tripId: string): Promise<TripDay[]> {
     return db.days.where('tripId').equals(tripId).sortBy('dayIndex');
   },
-  listDayEvents(dayId: string): Promise<TimelineEvent[]> {
-    return db.events.where('dayId').equals(dayId).sortBy('order');
+  listDayEvents(dayId: string, versionId?: string): Promise<TimelineEvent[]> {
+    let coll = db.events.where('dayId').equals(dayId);
+    if (versionId) coll = coll.and((e) => (e.versionId ?? '') === versionId);
+    return coll.sortBy('order');
+  },
+
+  async updateDayStartTime(dayId: string, startTime: string): Promise<void> {
+    await db.days.update(dayId, { startTime });
   },
   listTripEvents(tripId: string): Promise<TimelineEvent[]> {
     return db.events.where('tripId').equals(tripId).toArray();

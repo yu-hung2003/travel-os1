@@ -16,6 +16,9 @@ import { EventCard } from '@/features/timeline/components/EventCard';
 import { EventSheet } from '@/features/timeline/components/EventSheet';
 import { AddEventSheet } from '@/features/timeline/components/AddEventSheet';
 import type { TimelineEvent } from '@/domain/types';
+import { computeSchedule, closingWarning, neighborSigOf, type Slot } from '@/domain/schedule';
+import { VersionBar } from '@/features/timeline/components/VersionBar';
+import { BottomSheet } from '@/shared/components/BottomSheet';
 
 const WEEKDAY = ['日', '一', '二', '三', '四', '五', '六'];
 
@@ -55,10 +58,16 @@ export default function TimelinePage() {
     setSelectedDayId((today ?? days[0]).id);
   }, [days, searchParams, selectedDayId]);
 
+  const selectedDayObj = days?.find((d) => d.id === selectedDayId);
   const events = useLiveQuery(
-    () => (selectedDayId ? tripRepository.listDayEvents(selectedDayId) : Promise.resolve([])),
-    [selectedDayId],
+    () =>
+      selectedDayId
+        ? tripRepository.listDayEvents(selectedDayId, selectedDayObj?.activeVersionId)
+        : Promise.resolve([]),
+    [selectedDayId, selectedDayObj?.activeVersionId],
   );
+  const [editingStart, setEditingStart] = useState(false);
+  const [startText, setStartText] = useState('08:30');
 
   // Local order for instant drag feedback; DB write follows.
   const [orderedIds, setOrderedIds] = useState<string[]>([]);
@@ -88,7 +97,11 @@ export default function TimelinePage() {
 
   if (!trip || !days) return null;
 
-  const selectedDay = days.find((d) => d.id === selectedDayId);
+  const selectedDay = selectedDayObj;
+
+  // duration-based schedule: derived, reflows automatically on any change
+  const schedule = computeSchedule(selectedDay?.startTime, orderedEvents);
+  const slotOf = (id: string): Slot | undefined => schedule.get(id);
   const doneCount = orderedEvents.filter((e) => e.status === 'completed').length;
   const activeCount = orderedEvents.filter((e) => e.status !== 'skipped').length;
 
@@ -122,10 +135,24 @@ export default function TimelinePage() {
         </div>
       </div>
 
+      {/* version switcher */}
+      {selectedDay && <VersionBar day={selectedDay} />}
+
       {/* day header */}
       {selectedDay && (
         <div>
-          <h1 className="text-lg font-bold leading-snug">{selectedDay.title}</h1>
+          <div className="flex items-center justify-between gap-2">
+            <h1 className="text-lg font-bold leading-snug">{selectedDay.title}</h1>
+            <button
+              onClick={() => {
+                setStartText(selectedDay.startTime ?? '08:30');
+                setEditingStart(true);
+              }}
+              className="shrink-0 rounded-full bg-surface-2 border border-line/60 px-3 py-1.5 text-xs font-bold tabular-nums text-primary active:opacity-70"
+            >
+              🕗 {selectedDay.startTime ?? '08:30'} 出發
+            </button>
+          </div>
           {activeCount > 0 && (
             <div className="mt-2 flex items-center gap-2">
               <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-3">
@@ -147,7 +174,18 @@ export default function TimelinePage() {
         <SortableContext items={orderedIds} strategy={verticalListSortingStrategy}>
           <ul className="flex flex-col gap-2.5">
             {orderedEvents.map((ev) => (
-              <EventCard key={ev.id} event={ev} onOpen={setOpenEvent} />
+              <EventCard
+                key={ev.id}
+                event={ev}
+                onOpen={setOpenEvent}
+                slot={slotOf(ev.id)}
+                closing={closingWarning(ev, slotOf(ev.id))}
+                staleTransit={
+                  ev.type === 'transport' && ev.neighborSig !== undefined
+                    ? ev.neighborSig !== neighborSigOf(orderedEvents, ev.id)
+                    : false
+                }
+              />
             ))}
           </ul>
         </SortableContext>
@@ -165,6 +203,27 @@ export default function TimelinePage() {
       >
         ＋ 新增事件
       </button>
+
+      <BottomSheet open={editingStart} onClose={() => setEditingStart(false)} title="當日出發時間">
+        <div className="flex flex-col gap-3">
+          <p className="text-xs text-ink-3">所有行程時刻由出發時間 + 各項停留/交通時間自動推算。</p>
+          <input
+            type="time"
+            value={startText}
+            onChange={(e) => setStartText(e.target.value)}
+            className="w-full rounded-xl border border-line bg-surface p-3 text-2xl font-bold tabular-nums outline-none focus:border-primary"
+          />
+          <button
+            className="rounded-xl bg-primary py-3 text-sm font-bold text-primary-ink active:opacity-80"
+            onClick={async () => {
+              if (startText) await tripRepository.updateDayStartTime(selectedDayId, startText);
+              setEditingStart(false);
+            }}
+          >
+            儲存
+          </button>
+        </div>
+      </BottomSheet>
 
       <EventSheet event={openEvent} days={days} dayEvents={orderedEvents} onClose={() => setOpenEvent(null)} />
       <AddEventSheet

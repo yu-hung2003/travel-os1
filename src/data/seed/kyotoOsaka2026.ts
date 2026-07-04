@@ -1,6 +1,6 @@
 import type {
   Trip, TripDay, TimelineEvent, Accommodation,
-  EventType, TransitInfo,
+  EventType, TransitInfo, DayVersion,
 } from '@/domain/types';
 
 /* ---------------------------------------------------------------
@@ -426,27 +426,42 @@ export function buildKyotoOsakaSeed(): {
   days: TripDay[];
   events: TimelineEvent[];
   accommodations: Accommodation[];
+  versions: DayVersion[];
 } {
   const days: TripDay[] = [];
   const events: TimelineEvent[] = [];
+  const versions: DayVersion[] = [];
 
   seedDays.forEach((d, i) => {
     const dayIndex = i + 1;
     const dayId = `ko26-d${dayIndex}`;
+    const versionId = `${dayId}-v1`;
+    versions.push({ id: versionId, dayId, tripId: TRIP_ID, name: 'Original', createdAt: now() });
     days.push({
       id: dayId,
       tripId: TRIP_ID,
       dayIndex,
       date: d.date,
       title: d.title,
+      startTime: d.events.find((e) => e.startTime)?.startTime ?? '08:30',
+      activeVersionId: versionId,
       accommodationId: d.accommodationId,
       note: d.note,
     });
     d.events.forEach((e, j) => {
+      let durationMin: number | undefined;
+      if (e.startTime && e.endTime) {
+        const [sh, sm] = e.startTime.split(':').map(Number);
+        const [eh, em] = e.endTime.split(':').map(Number);
+        const dur = eh * 60 + em - (sh * 60 + sm);
+        if (dur > 0 && dur <= 12 * 60) durationMin = dur;
+      }
       events.push({
         id: `${dayId}-e${j + 1}`,
         tripId: TRIP_ID,
         dayId,
+        versionId,
+        durationMin,
         order: j + 1,
         type: e.type,
         title: e.title,
@@ -466,5 +481,5 @@ export function buildKyotoOsakaSeed(): {
     });
   });
 
-  return { trip: kyotoOsakaTrip, days, events, accommodations: kyotoOsakaAccommodations };
+  return { trip: kyotoOsakaTrip, days, events, accommodations: kyotoOsakaAccommodations, versions };
 }

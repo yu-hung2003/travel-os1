@@ -28,20 +28,27 @@ export const eventRepository = {
     startTime?: string;
   }): Promise<string> {
     const id = newId();
-    await db.transaction('rw', db.events, async () => {
-      const siblings = await db.events.where('dayId').equals(input.dayId).sortBy('order');
+    await db.transaction('rw', [db.events, db.days], async () => {
+      const day = await db.days.get(input.dayId);
+      const versionId = day?.activeVersionId;
+      const siblings = (await db.events.where('dayId').equals(input.dayId).sortBy('order'))
+        .filter((e) => !versionId || (e.versionId ?? '') === versionId);
       const idx = siblings.findIndex((e) => e.id === input.beforeEventId);
       const insertAt = idx < 0 ? siblings.length : idx;
 
+      const prevActive = siblings.slice(0, insertAt).reverse()
+        .find((e) => e.status !== 'skipped' && e.status !== 'postponed');
       const newEvent: TimelineEvent = {
         id,
         tripId: input.tripId,
         dayId: input.dayId,
+        versionId,
         order: 0, // renumbered below
         type: 'transport',
         title: input.title,
-        startTime: input.startTime || undefined,
+        durationMin: input.transit.durationMin,
         transit: input.transit,
+        neighborSig: `${prevActive?.id ?? ''}|${input.beforeEventId}`,
         status: 'scheduled',
         isFavorite: false,
         createdAt: Date.now(),
@@ -68,6 +75,23 @@ export const eventRepository = {
     await db.events.update(eventId, { note: note.trim() || undefined, updatedAt: Date.now() });
   },
 
+  async updateDuration(eventId: string, durationMin: number | undefined): Promise<void> {
+    await db.events.update(eventId, { durationMin, updatedAt: Date.now() });
+  },
+
+  async updateHours(eventId: string, openUntil?: string, lastEntry?: string): Promise<void> {
+    await db.events.update(eventId, {
+      openUntil: openUntil || undefined,
+      lastEntry: lastEntry || undefined,
+      updatedAt: Date.now(),
+    });
+  },
+
+  /** mark a transport card's route as confirmed for its current neighbors */
+  async confirmNeighborSig(eventId: string, sig: string): Promise<void> {
+    await db.events.update(eventId, { neighborSig: sig, updatedAt: Date.now() });
+  },
+
   async toggleFavorite(eventId: string): Promise<void> {
     const ev = await db.events.get(eventId);
     if (!ev) return;
@@ -87,11 +111,15 @@ export const eventRepository = {
 
   /** Move event to another day (appended at the end, back to 'scheduled'). */
   async moveToDay(eventId: string, targetDayId: string): Promise<void> {
-    await db.transaction('rw', db.events, async () => {
-      const siblings = await db.events.where('dayId').equals(targetDayId).toArray();
+    await db.transaction('rw', [db.events, db.days], async () => {
+      const day = await db.days.get(targetDayId);
+      const versionId = day?.activeVersionId;
+      const siblings = await db.events.where('dayId').equals(targetDayId)
+        .and((e) => !versionId || (e.versionId ?? '') === versionId).toArray();
       const maxOrder = siblings.reduce((m, e) => Math.max(m, e.order), 0);
       await db.events.update(eventId, {
         dayId: targetDayId,
+        versionId,
         order: maxOrder + 1,
         status: 'scheduled',
         updatedAt: Date.now(),
@@ -104,22 +132,24 @@ export const eventRepository = {
     dayId: string;
     type: EventType;
     title: string;
-    startTime?: string;
-    endTime?: string;
+    durationMin?: number;
     note?: string;
   }): Promise<void> {
-    await db.transaction('rw', db.events, async () => {
-      const siblings = await db.events.where('dayId').equals(input.dayId).toArray();
+    await db.transaction('rw', [db.events, db.days], async () => {
+      const day = await db.days.get(input.dayId);
+      const versionId = day?.activeVersionId;
+      const siblings = await db.events.where('dayId').equals(input.dayId)
+        .and((e) => !versionId || (e.versionId ?? '') === versionId).toArray();
       const maxOrder = siblings.reduce((m, e) => Math.max(m, e.order), 0);
       const event: TimelineEvent = {
         id: newId(),
         tripId: input.tripId,
         dayId: input.dayId,
+        versionId,
         order: maxOrder + 1,
         type: input.type,
         title: input.title.trim(),
-        startTime: input.startTime || undefined,
-        endTime: input.endTime || undefined,
+        durationMin: input.durationMin,
         note: input.note?.trim() || undefined,
         status: 'scheduled',
         isFavorite: false,
@@ -162,12 +192,16 @@ export const eventRepository = {
       place.note,
     ].filter(Boolean);
 
-    await db.transaction('rw', [db.events, db.places], async () => {
-      const siblings = await db.events.where('dayId').equals(input.dayId).sortBy('order');
+    await db.transaction('rw', [db.events, db.places, db.days], async () => {
+      const day = await db.days.get(input.dayId);
+      const versionId = day?.activeVersionId;
+      const siblings = (await db.events.where('dayId').equals(input.dayId).sortBy('order'))
+        .filter((e) => !versionId || (e.versionId ?? '') === versionId);
       const newEvent: TimelineEvent = {
         id: newId(),
         tripId: place.tripId,
         dayId: input.dayId,
+        versionId,
         order: 0,
         type: 'food',
         title: place.name,

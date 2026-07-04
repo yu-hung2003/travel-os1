@@ -46,8 +46,21 @@ export interface TripDay {
   dayIndex: number;          // 1-based: Day 1, Day 2...
   date: string;              // ISO date
   title?: string;            // e.g. '宇治 → 伏見稻荷 → 清水寺'
+  /** the day's departure time; all event times are computed from it */
+  startTime?: string;        // 'HH:mm', default 08:30
+  /** which DayVersion is currently shown for this day */
+  activeVersionId?: ID;
   accommodationId?: ID;
   note?: string;
+}
+
+/** A per-day itinerary variant (Original / Rain / Shopping / Modified…) */
+export interface DayVersion {
+  id: ID;
+  dayId: ID;
+  tripId: ID;
+  name: string;
+  createdAt: number;
 }
 
 export type EventType =
@@ -69,9 +82,18 @@ export interface TimelineEvent {
   order: number;
   type: EventType;
   title: string;
-  /** 'HH:mm' local to trip timezone; optional for flexible events */
+  /** which day-version this event belongs to */
+  versionId?: ID;
+  /** planned stay / ride duration in minutes; times are computed from it */
+  durationMin?: number;
+  /** legacy fixed times (pre-v4) — still used as fallback for imports */
   startTime?: string;
   endTime?: string;
+  /** opening-hours info for closing-time warnings */
+  openUntil?: string;        // 'HH:mm' 營業至
+  lastEntry?: string;        // 'HH:mm' 最後入場
+  /** transport cards: neighbor signature at last edit, for stale detection */
+  neighborSig?: string;
   location?: GeoPoint;
   placeName?: string;
   /** transit details: line, fare, duration */

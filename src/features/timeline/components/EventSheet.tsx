@@ -16,12 +16,18 @@ interface Props {
 
 export function EventSheet({ event, days, dayEvents = [], onClose }: Props) {
   const [note, setNote] = useState('');
-  const [view, setView] = useState<'actions' | 'move' | 'confirmDelete' | 'transit'>('actions');
+  const [view, setView] = useState<'actions' | 'move' | 'confirmDelete' | 'transit' | 'timing'>('actions');
+  const [durText, setDurText] = useState('');
+  const [openUntil, setOpenUntil] = useState('');
+  const [lastEntry, setLastEntry] = useState('');
   const [transit, setTransit] = useState<TransitInfo>({ mode: 'train' });
 
   useEffect(() => {
     setNote(event?.note ?? '');
     setTransit(event?.transit ? { ...event.transit } : { mode: 'train' });
+    setDurText(event?.durationMin ? String(event.durationMin) : '');
+    setOpenUntil(event?.openUntil ?? '');
+    setLastEntry(event?.lastEntry ?? '');
     setView('actions');
   }, [event]);
 
@@ -62,8 +68,11 @@ export function EventSheet({ event, days, dayEvents = [], onClose }: Props) {
       !cleaned.durationMin && !cleaned.distanceKm && !cleaned.farePerAdult;
 
     if (event.type === 'transport') {
-      // transport cards edit their own transit info
+      // transport cards edit their own transit info; editing re-confirms the route
       await eventRepository.updateTransit(event.id, empty ? undefined : cleaned);
+      if (cleaned.durationMin) await eventRepository.updateDuration(event.id, cleaned.durationMin);
+      const { neighborSigOf } = await import('@/domain/schedule');
+      await eventRepository.confirmNeighborSig(event.id, neighborSigOf(dayEvents, event.id));
     } else {
       // other cards spawn a standalone transport card right before them
       if (empty) {
@@ -158,6 +167,9 @@ export function EventSheet({ event, days, dayEvents = [], onClose }: Props) {
                 🚏 導航此段(A→B)
               </a>
             )}
+            <button className={actionBtn} onClick={() => setView('timing')}>
+              ⏱ 停留/營業時間
+            </button>
             {event.type === 'transport' ? (
               <button className={actionBtn} onClick={() => setView('transit')}>
                 🚃 編輯交通資訊
@@ -226,6 +238,62 @@ export function EventSheet({ event, days, dayEvents = [], onClose }: Props) {
           <button className="mt-1 text-sm text-ink-3" onClick={() => setView('actions')}>
             ‹ 返回
           </button>
+        </div>
+      )}
+
+      {view === 'timing' && (
+        <div className="flex flex-col gap-3">
+          <div>
+            <label className="text-xs font-semibold text-ink-2">預計停留(分鐘)— 行程時刻將自動重算</label>
+            <input
+              type="number" inputMode="numeric" min="5" step="5"
+              value={durText}
+              onChange={(e) => setDurText(e.target.value)}
+              placeholder="留空 = 預設"
+              className={input}
+            />
+            <div className="mt-1.5 flex flex-wrap gap-1.5">
+              {[30, 45, 60, 90, 120, 180].map((m) => (
+                <button
+                  key={m}
+                  onClick={() => setDurText(String(m))}
+                  className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
+                    durText === String(m) ? 'bg-primary text-primary-ink' : 'bg-surface-3 text-ink-2'
+                  }`}
+                >
+                  {m}分
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-semibold text-ink-2">營業至(選填)</label>
+              <input type="time" value={openUntil} onChange={(e) => setOpenUntil(e.target.value)} className={input} />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-ink-2">最後入場(選填)</label>
+              <input type="time" value={lastEntry} onChange={(e) => setLastEntry(e.target.value)} className={input} />
+            </div>
+          </div>
+          <p className="text-xs text-ink-3">
+            填了營業/入場時間後,若推算的抵達時間太晚,行程卡會自動出現打烊警示。
+          </p>
+          <button
+            className="rounded-xl bg-primary py-3 text-sm font-bold text-primary-ink active:opacity-80"
+            onClick={async () => {
+              const dur = Number(durText);
+              await eventRepository.updateDuration(
+                event.id,
+                Number.isFinite(dur) && dur > 0 ? Math.round(dur) : undefined,
+              );
+              await eventRepository.updateHours(event.id, openUntil, lastEntry);
+              onClose();
+            }}
+          >
+            儲存
+          </button>
+          <button className="text-sm text-ink-3" onClick={() => setView('actions')}>‹ 返回</button>
         </div>
       )}
 

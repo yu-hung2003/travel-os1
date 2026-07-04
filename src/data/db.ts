@@ -2,7 +2,7 @@ import Dexie, { type Table } from 'dexie';
 import type {
   Trip, TripDay, TimelineEvent, Expense, JournalEntry,
   PackingItem, Accommodation, WeatherCache, UserPref,
-  Transfer, Place,
+  Transfer, Place, DayVersion,
 } from '@/domain/types';
 
 /**
@@ -23,6 +23,7 @@ export class TravelOSDB extends Dexie {
   prefs!: Table<UserPref, string>;
   transfers!: Table<Transfer, string>;
   places!: Table<Place, string>;
+  dayVersions!: Table<DayVersion, string>;
 
   constructor() {
     super('travel-os');
@@ -36,6 +37,57 @@ export class TravelOSDB extends Dexie {
       accommodations: 'id, tripId, checkInDate',
       weatherCache: 'locationKey, fetchedAt',
       prefs: 'key',
+    });
+    // v4: duration-based scheduling + per-day itinerary versions
+    this.version(4).stores({
+      dayVersions: 'id, dayId, tripId',
+    }).upgrade(async (tx) => {
+      const days = await tx.table('days').toArray();
+      const events = await tx.table('events').toArray();
+
+      for (const day of days) {
+        const versionId = `${day.id}-v1`;
+        await tx.table('dayVersions').add({
+          id: versionId,
+          dayId: day.id,
+          tripId: day.tripId,
+          name: 'Original',
+          createdAt: Date.now(),
+        });
+
+        const dayEvents = events
+          .filter((e) => e.dayId === day.id)
+          .sort((a, b) => a.order - b.order);
+
+        // day start time from the first fixed time we had
+        const firstTimed = dayEvents.find((e) => e.startTime);
+        await tx.table('days').update(day.id, {
+          startTime: firstTimed?.startTime ?? '08:30',
+          activeVersionId: versionId,
+        });
+
+        const activeIds = dayEvents
+          .filter((e) => e.status !== 'skipped' && e.status !== 'postponed')
+          .map((e) => e.id);
+
+        for (const e of dayEvents) {
+          const patch: Record<string, unknown> = { versionId };
+          // derive duration from legacy fixed times when sensible
+          if (e.durationMin == null && e.startTime && e.endTime) {
+            const [sh, sm] = e.startTime.split(':').map(Number);
+            const [eh, em] = e.endTime.split(':').map(Number);
+            const dur = eh * 60 + em - (sh * 60 + sm);
+            if (dur > 0 && dur <= 12 * 60) patch.durationMin = dur;
+          }
+          if (e.type === 'transport') {
+            const idx = activeIds.indexOf(e.id);
+            const prev = idx > 0 ? activeIds[idx - 1] : '';
+            const next = idx >= 0 && idx < activeIds.length - 1 ? activeIds[idx + 1] : '';
+            patch.neighborSig = `${prev}|${next}`;
+          }
+          await tx.table('events').update(e.id, patch);
+        }
+      }
     });
     // v3: airport transfers + place wishlist
     this.version(3).stores({
