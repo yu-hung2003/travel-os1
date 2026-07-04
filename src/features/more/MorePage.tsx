@@ -18,6 +18,14 @@ export default function MorePage() {
 
       <InstallCard />
 
+      <Link to="/places" className="card flex items-center justify-between p-5 active:opacity-80">
+        <div>
+          <h2 className="text-sm font-bold">🍜 餐廳口袋名單</h2>
+          <p className="mt-0.5 text-xs text-ink-3">備選/選定/去過,訂位、價位、菜單、距離一目瞭然</p>
+        </div>
+        <span className="text-ink-3">›</span>
+      </Link>
+
       <Link to="/packing" className="card flex items-center justify-between p-5 active:opacity-80">
         <div>
           <h2 className="text-sm font-bold">🧳 行李清單</h2>

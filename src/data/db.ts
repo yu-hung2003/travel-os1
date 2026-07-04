@@ -2,6 +2,7 @@ import Dexie, { type Table } from 'dexie';
 import type {
   Trip, TripDay, TimelineEvent, Expense, JournalEntry,
   PackingItem, Accommodation, WeatherCache, UserPref,
+  Transfer, Place,
 } from '@/domain/types';
 
 /**
@@ -20,6 +21,8 @@ export class TravelOSDB extends Dexie {
   accommodations!: Table<Accommodation, string>;
   weatherCache!: Table<WeatherCache, string>;
   prefs!: Table<UserPref, string>;
+  transfers!: Table<Transfer, string>;
+  places!: Table<Place, string>;
 
   constructor() {
     super('travel-os');
@@ -33,6 +36,11 @@ export class TravelOSDB extends Dexie {
       accommodations: 'id, tripId, checkInDate',
       weatherCache: 'locationKey, fetchedAt',
       prefs: 'key',
+    });
+    // v3: airport transfers + place wishlist
+    this.version(3).stores({
+      transfers: 'id, tripId, datetime',
+      places: 'id, tripId, status, createdAt',
     });
     // v2: expenses gain memberIds (multi-member tagging)
     this.version(2).upgrade(async (tx) => {

@@ -2,6 +2,7 @@ import { Link, useParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { format, parseISO } from 'date-fns';
 import { tripRepository } from '@/data/repositories/tripRepository';
+import { TransferSection } from '@/features/trips/components/TransferSection';
 
 const WEEKDAY = ['日', '一', '二', '三', '四', '五', '六'];
 
@@ -48,6 +49,8 @@ export default function TripDetailPage() {
           );
         })}
       </section>
+
+      <TransferSection tripId={trip.id} />
 
       {accommodations && accommodations.length > 0 && (
         <section className="card p-5">

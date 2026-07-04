@@ -52,10 +52,14 @@ export function EventCard({ event, onOpen }: Props) {
           >
             {event.title}
           </span>
-          {event.transit?.line && (
+          {event.transit && (event.transit.line || event.transit.durationMin || event.transit.farePerAdult) && (
             <span className="mt-0.5 block text-xs text-ink-3">
-              {event.transit.line}
-              {event.transit.farePerAdult ? ` · ¥${event.transit.farePerAdult.toLocaleString()}/大人` : ''}
+              {[
+                event.transit.line,
+                event.transit.durationMin ? `${event.transit.durationMin}分` : undefined,
+                event.transit.distanceKm ? `${event.transit.distanceKm}km` : undefined,
+                event.transit.farePerAdult ? `¥${event.transit.farePerAdult.toLocaleString()}/大人` : undefined,
+              ].filter(Boolean).join(' · ')}
             </span>
           )}
           {event.alert && event.status === 'scheduled' && (

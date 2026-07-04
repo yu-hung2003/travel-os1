@@ -13,6 +13,7 @@ const MapPage = lazy(() => import('@/features/map/MapPage'));
 const ExpensePage = lazy(() => import('@/features/expense/ExpensePage'));
 const MorePage = lazy(() => import('@/features/more/MorePage'));
 const PackingPage = lazy(() => import('@/features/packing/PackingPage'));
+const PlacesPage = lazy(() => import('@/features/places/PlacesPage'));
 
 function Shell() {
   return (
@@ -47,6 +48,7 @@ const router = createBrowserRouter([
       { path: '/expense', element: <ExpensePage /> },
       { path: '/more', element: <MorePage /> },
       { path: '/packing', element: <PackingPage /> },
+      { path: '/places', element: <PlacesPage /> },
     ],
   },
 ]);

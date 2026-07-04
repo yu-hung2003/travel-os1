@@ -92,8 +92,44 @@ export interface TransitInfo {
   from?: string;
   to?: string;
   durationMin?: number;
+  distanceKm?: number;
   farePerAdult?: number;     // trip currency
   fareNote?: string;         // e.g. '兒童半價'
+}
+
+/** Airport transfer / private car booking */
+export interface Transfer {
+  id: ID;
+  tripId: ID;
+  title: string;             // e.g. '去程:桃園機場接送'
+  /** ISO local datetime, e.g. '2026-08-08T09:30' */
+  datetime?: string;
+  amount?: number;
+  currency?: string;         // defaults to trip currency context
+  contactName?: string;
+  contactPhone?: string;
+  note?: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export type PlaceStatus = 'candidate' | 'chosen' | 'visited';
+
+/** Restaurant / spot wishlist entry */
+export interface Place {
+  id: ID;
+  tripId: ID;
+  name: string;
+  needsReservation?: boolean;
+  priceRange?: string;       // e.g. '¥1,000-2,000/人'
+  hours?: string;            // e.g. '11:00-21:00,週三休'
+  webUrl?: string;
+  menuUrl?: string;
+  location?: GeoPoint;
+  note?: string;
+  status: PlaceStatus;
+  createdAt: number;
+  updatedAt: number;
 }
 
 export type ExpenseCategory =

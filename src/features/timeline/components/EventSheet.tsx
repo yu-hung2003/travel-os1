@@ -3,6 +3,8 @@ import type { EventStatus, TimelineEvent, TripDay } from '@/domain/types';
 import { eventRepository } from '@/data/repositories/eventRepository';
 import { BottomSheet } from '@/shared/components/BottomSheet';
 import { typeMeta } from '@/features/timeline/eventMeta';
+import { gmapsDirectionsUrl } from '@/shared/utils/maps';
+import type { TransitInfo } from '@/domain/types';
 
 interface Props {
   event: TimelineEvent | null;
@@ -12,10 +14,12 @@ interface Props {
 
 export function EventSheet({ event, days, onClose }: Props) {
   const [note, setNote] = useState('');
-  const [view, setView] = useState<'actions' | 'move' | 'confirmDelete'>('actions');
+  const [view, setView] = useState<'actions' | 'move' | 'confirmDelete' | 'transit'>('actions');
+  const [transit, setTransit] = useState<TransitInfo>({ mode: 'train' });
 
   useEffect(() => {
     setNote(event?.note ?? '');
+    setTransit(event?.transit ? { ...event.transit } : { mode: 'train' });
     setView('actions');
   }, [event]);
 
@@ -41,8 +45,34 @@ export function EventSheet({ event, days, onClose }: Props) {
     onClose();
   };
 
+  const saveTransit = async () => {
+    const cleaned: TransitInfo = {
+      mode: transit.mode,
+      line: transit.line?.trim() || undefined,
+      from: transit.from?.trim() || undefined,
+      to: transit.to?.trim() || undefined,
+      durationMin: transit.durationMin || undefined,
+      distanceKm: transit.distanceKm || undefined,
+      farePerAdult: transit.farePerAdult || undefined,
+      fareNote: transit.fareNote?.trim() || undefined,
+    };
+    const empty = !cleaned.line && !cleaned.from && !cleaned.to &&
+      !cleaned.durationMin && !cleaned.distanceKm && !cleaned.farePerAdult;
+    await eventRepository.updateTransit(event.id, empty ? undefined : cleaned);
+    onClose();
+  };
+
+  const navDestination = event.location ?? event.transit?.to ?? event.placeName ?? event.title;
+  const navMode =
+    event.transit?.mode === 'walk' ? 'walking'
+    : event.transit?.mode === 'taxi' ? 'driving'
+    : 'transit';
+
   const actionBtn =
     'flex items-center gap-2 rounded-xl bg-surface-3 px-3 py-3 text-sm font-semibold active:opacity-70';
+
+  const input =
+    'mt-1 w-full rounded-xl border border-line bg-surface p-2.5 text-sm outline-none focus:border-primary';
 
   return (
     <BottomSheet open onClose={onClose} title={`${typeMeta[event.type].emoji} ${event.title}`}>
@@ -80,6 +110,17 @@ export function EventSheet({ event, days, onClose }: Props) {
               }}
             >
               {event.isFavorite ? '💔 取消收藏' : '⭐ 收藏'}
+            </button>
+            <a
+              className={actionBtn}
+              href={gmapsDirectionsUrl({ destination: navDestination, mode: navMode })}
+              target="_blank"
+              rel="noreferrer"
+            >
+              🧭 導航前往
+            </a>
+            <button className={actionBtn} onClick={() => setView('transit')}>
+              🚃 編輯交通資訊
             </button>
           </div>
 
@@ -129,6 +170,71 @@ export function EventSheet({ event, days, onClose }: Props) {
           <button className="mt-1 text-sm text-ink-3" onClick={() => setView('actions')}>
             ‹ 返回
           </button>
+        </div>
+      )}
+
+      {view === 'transit' && (
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-wrap gap-1.5">
+            {([
+              ['walk', '🚶 步行'], ['bus', '🚌 公車'], ['train', '🚃 電車'],
+              ['subway', '🚇 地下鐵'], ['taxi', '🚕 計程車'], ['boat', '⛴️ 船'], ['flight', '✈️ 飛機'],
+            ] as const).map(([m, label]) => (
+              <button
+                key={m}
+                onClick={() => setTransit({ ...transit, mode: m })}
+                className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
+                  transit.mode === m ? 'bg-primary text-primary-ink' : 'bg-surface-3 text-ink-2'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-semibold text-ink-2">出發地</label>
+              <input className={input} value={transit.from ?? ''}
+                onChange={(e) => setTransit({ ...transit, from: e.target.value })} placeholder="難波站" />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-ink-2">目的地</label>
+              <input className={input} value={transit.to ?? ''}
+                onChange={(e) => setTransit({ ...transit, to: e.target.value })} placeholder="梅田站" />
+            </div>
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-ink-2">路線/班次(選填)</label>
+            <input className={input} value={transit.line ?? ''}
+              onChange={(e) => setTransit({ ...transit, line: e.target.value })} placeholder="御堂筋線" />
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            <div>
+              <label className="text-xs font-semibold text-ink-2">分鐘</label>
+              <input className={input} type="number" inputMode="numeric" min="0"
+                value={transit.durationMin ?? ''}
+                onChange={(e) => setTransit({ ...transit, durationMin: Number(e.target.value) || undefined })} />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-ink-2">公里</label>
+              <input className={input} type="number" inputMode="decimal" min="0" step="0.1"
+                value={transit.distanceKm ?? ''}
+                onChange={(e) => setTransit({ ...transit, distanceKm: Number(e.target.value) || undefined })} />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-ink-2">車資/人</label>
+              <input className={input} type="number" inputMode="numeric" min="0"
+                value={transit.farePerAdult ?? ''}
+                onChange={(e) => setTransit({ ...transit, farePerAdult: Number(e.target.value) || undefined })} />
+            </div>
+          </div>
+          <button
+            className="rounded-xl bg-primary py-3 text-sm font-bold text-primary-ink active:opacity-80"
+            onClick={saveTransit}
+          >
+            儲存交通資訊
+          </button>
+          <button className="text-sm text-ink-3" onClick={() => setView('actions')}>‹ 返回</button>
         </div>
       )}
 

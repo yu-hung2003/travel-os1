@@ -1,11 +1,15 @@
 import { db } from '@/data/db';
 import { newId } from '@/shared/utils/id';
-import type { EventStatus, EventType, TimelineEvent } from '@/domain/types';
+import type { EventStatus, EventType, TimelineEvent, TransitInfo } from '@/domain/types';
 
 export const eventRepository = {
   /** FSM transition; any status can return to 'scheduled' (undo). */
   async setStatus(eventId: string, status: EventStatus): Promise<void> {
     await db.events.update(eventId, { status, updatedAt: Date.now() });
+  },
+
+  async updateTransit(eventId: string, transit: TransitInfo | undefined): Promise<void> {
+    await db.events.update(eventId, { transit, updatedAt: Date.now() });
   },
 
   async updateNote(eventId: string, note: string): Promise<void> {
