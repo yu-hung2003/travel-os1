@@ -7,8 +7,8 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'autoUpdate',
-      includeAssets: ['icons/icon-192.png', 'icons/icon-512.png'],
+      registerType: 'prompt',
+      includeAssets: ['icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png'],
       manifest: {
         name: 'Travel OS',
         short_name: 'Travel OS',
@@ -26,6 +26,7 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,png,svg,ico,woff2}'],
+        cleanupOutdatedCaches: true,
         navigateFallback: '/index.html',
         runtimeCaching: [
           {

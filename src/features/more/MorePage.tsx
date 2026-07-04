@@ -1,5 +1,6 @@
 import { useTheme } from '@/shared/hooks/useTheme';
 import type { ThemePref } from '@/domain/types';
+import { InstallCard } from '@/features/more/components/InstallCard';
 
 const options: { value: ThemePref; label: string }[] = [
   { value: 'light', label: '淺色' },
@@ -13,6 +14,8 @@ export default function MorePage() {
   return (
     <div className="flex flex-col gap-4 py-6">
       <h1 className="text-2xl font-bold">更多</h1>
+
+      <InstallCard />
 
       <section className="card p-5">
         <h2 className="text-sm font-semibold text-ink-2">外觀主題</h2>
