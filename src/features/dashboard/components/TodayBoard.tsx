@@ -44,6 +44,12 @@ export function TodayBoard({ trip, day, now, preview = false }: Props) {
     ),
     [day.id],
   );
+  const tripSpend = useLiveQuery(
+    () => db.expenses.where('tripId').equals(trip.id).toArray().then(
+      (rows) => rows.reduce((sum, r) => sum + r.amount, 0),
+    ),
+    [trip.id],
+  );
 
   if (!events) return null;
 
@@ -129,7 +135,13 @@ export function TodayBoard({ trip, day, now, preview = false }: Props) {
           <p className="mt-1.5 text-xl font-bold tabular-nums">
             ¥{(todaySpend ?? 0).toLocaleString()}
           </p>
-          <p className="mt-0.5 text-[11px] text-ink-3">點擊記一筆</p>
+          <p className="mt-0.5 text-[11px] text-ink-3">
+            {trip.totalBudget !== undefined && tripSpend !== undefined
+              ? trip.totalBudget - tripSpend >= 0
+                ? `剩餘預算 ¥${(trip.totalBudget - tripSpend).toLocaleString()}`
+                : `已超支 ¥${(tripSpend - trip.totalBudget).toLocaleString()}`
+              : '點擊記一筆'}
+          </p>
         </Link>
         <div className="card p-4">
           <p className="text-xs font-semibold text-ink-2">今日天氣</p>
