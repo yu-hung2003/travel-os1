@@ -87,6 +87,16 @@ export const eventRepository = {
     });
   },
 
+  async updateInfo(eventId: string, patch: {
+    ticketPerAdult?: number;
+    needsBooking?: boolean;
+    hasLockers?: boolean;
+    hasToilets?: boolean;
+    webUrl?: string;
+  }): Promise<void> {
+    await db.events.update(eventId, { ...patch, updatedAt: Date.now() });
+  },
+
   /** mark a transport card's route as confirmed for its current neighbors */
   async confirmNeighborSig(eventId: string, sig: string): Promise<void> {
     await db.events.update(eventId, { neighborSig: sig, updatedAt: Date.now() });
@@ -188,7 +198,8 @@ export const eventRepository = {
     const noteParts = [
       place.priceRange ? `💴 ${place.priceRange}` : undefined,
       place.hours ? `🕐 ${place.hours}` : undefined,
-      place.webUrl,
+      place.recommended ? `👍 推薦:${place.recommended}` : undefined,
+      place.queueNote ? `🕰 排隊:${place.queueNote}` : undefined,
       place.note,
     ].filter(Boolean);
 
@@ -211,6 +222,8 @@ export const eventRepository = {
         note: noteParts.length ? noteParts.join('\n') : undefined,
         alert: place.needsReservation ? '此餐廳需訂位,請先確認訂位狀況' : undefined,
         placeId: place.id,
+        webUrl: place.webUrl,
+        needsBooking: place.needsReservation,
         status: 'scheduled',
         isFavorite: false,
         createdAt: Date.now(),

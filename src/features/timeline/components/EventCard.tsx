@@ -102,6 +102,19 @@ export function EventCard({ event, onOpen, slot, closing, staleTransit = false }
               )}
             </span>
           )}
+          {(event.ticketPerAdult != null || event.needsBooking !== undefined ||
+            event.hasLockers !== undefined || event.hasToilets !== undefined) && (
+            <span className="mt-1 block text-xs text-ink-2">
+              {[
+                event.ticketPerAdult != null
+                  ? event.ticketPerAdult === 0 ? '🎫 免費' : `🎫 ¥${event.ticketPerAdult.toLocaleString()}/人`
+                  : undefined,
+                event.needsBooking === true ? '📌 需預約' : undefined,
+                event.hasLockers === true ? '🧳 可寄物' : event.hasLockers === false ? '🧳 無寄物' : undefined,
+                event.hasToilets === true ? '🚻 有廁所' : event.hasToilets === false ? '🚻 無廁所' : undefined,
+              ].filter(Boolean).join(' · ')}
+            </span>
+          )}
           {staleTransit && (
             <span className="mt-1 block rounded-lg bg-warning/15 px-2 py-1 text-xs font-semibold leading-relaxed text-warning">
               ⚠️ 前後行程已變動,請點選確認/更新此段交通

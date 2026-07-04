@@ -106,6 +106,12 @@ export interface TimelineEvent {
   alert?: string;
   /** link back to a wishlist Place — enables completed→visited sync */
   placeId?: ID;
+  /* --- structured sight info (all user-filled) --- */
+  ticketPerAdult?: number;   // 門票/人
+  needsBooking?: boolean;    // 是否需預約
+  hasLockers?: boolean;      // 是否可寄物
+  hasToilets?: boolean;      // 是否有廁所
+  webUrl?: string;           // 官網
   createdAt: number;
   updatedAt: number;
 }
@@ -162,6 +168,10 @@ export interface Place {
   note?: string;
   /** personal rating after visiting, 1-5 */
   myRating?: number;
+  /* --- structured restaurant info (all user-filled) --- */
+  recommended?: string;      // 推薦料理
+  queueNote?: string;        // 排隊時間 e.g. '平日約15分,假日30分+'
+  cardAccepted?: boolean;    // 是否可刷卡
   status: PlaceStatus;
   createdAt: number;
   updatedAt: number;

@@ -16,7 +16,12 @@ interface Props {
 
 export function EventSheet({ event, days, dayEvents = [], onClose }: Props) {
   const [note, setNote] = useState('');
-  const [view, setView] = useState<'actions' | 'move' | 'confirmDelete' | 'transit' | 'timing'>('actions');
+  const [view, setView] = useState<'actions' | 'move' | 'confirmDelete' | 'transit' | 'timing' | 'info'>('actions');
+  const [ticketText, setTicketText] = useState('');
+  const [needsBooking, setNeedsBooking] = useState<boolean | undefined>(undefined);
+  const [hasLockers, setHasLockers] = useState<boolean | undefined>(undefined);
+  const [hasToilets, setHasToilets] = useState<boolean | undefined>(undefined);
+  const [webUrl, setWebUrl] = useState('');
   const [durText, setDurText] = useState('');
   const [openUntil, setOpenUntil] = useState('');
   const [lastEntry, setLastEntry] = useState('');
@@ -28,6 +33,11 @@ export function EventSheet({ event, days, dayEvents = [], onClose }: Props) {
     setDurText(event?.durationMin ? String(event.durationMin) : '');
     setOpenUntil(event?.openUntil ?? '');
     setLastEntry(event?.lastEntry ?? '');
+    setTicketText(event?.ticketPerAdult != null ? String(event.ticketPerAdult) : '');
+    setNeedsBooking(event?.needsBooking);
+    setHasLockers(event?.hasLockers);
+    setHasToilets(event?.hasToilets);
+    setWebUrl(event?.webUrl ?? '');
     setView('actions');
   }, [event]);
 
@@ -176,6 +186,22 @@ export function EventSheet({ event, days, dayEvents = [], onClose }: Props) {
             <button className={actionBtn} onClick={() => setView('timing')}>
               ⏱ 停留/營業時間
             </button>
+            <button className={actionBtn} onClick={() => setView('info')}>
+              ℹ️ 景點/店家資訊
+            </button>
+            <a
+              className={actionBtn}
+              href={`https://www.google.com/search?q=${encodeURIComponent(`${event.placeName ?? event.title} 評論`)}`}
+              target="_blank"
+              rel="noreferrer"
+            >
+              💬 Google 評論
+            </a>
+            {event.webUrl && (
+              <a className={actionBtn} href={event.webUrl} target="_blank" rel="noreferrer">
+                🔗 官網
+              </a>
+            )}
             {event.type === 'transport' ? (
               <button className={actionBtn} onClick={() => setView('transit')}>
                 🚃 編輯交通資訊
@@ -244,6 +270,65 @@ export function EventSheet({ event, days, dayEvents = [], onClose }: Props) {
           <button className="mt-1 text-sm text-ink-3" onClick={() => setView('actions')}>
             ‹ 返回
           </button>
+        </div>
+      )}
+
+      {view === 'info' && (
+        <div className="flex flex-col gap-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-semibold text-ink-2">門票(¥/人,免費填0)</label>
+              <input className={input} type="number" inputMode="numeric" min="0"
+                value={ticketText} onChange={(e) => setTicketText(e.target.value)} />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-ink-2">官網(選填)</label>
+              <input className={input} type="url" placeholder="https://…"
+                value={webUrl} onChange={(e) => setWebUrl(e.target.value)} />
+            </div>
+          </div>
+
+          {([
+            ['需預約', needsBooking, setNeedsBooking],
+            ['可寄物', hasLockers, setHasLockers],
+            ['有廁所', hasToilets, setHasToilets],
+          ] as const).map(([label, value, setter]) => (
+            <div key={label} className="flex items-center gap-2">
+              <span className="w-16 text-xs font-semibold text-ink-2">{label}</span>
+              {([[true, '是'], [false, '否'], [undefined, '不確定']] as const).map(([v, t]) => (
+                <button
+                  key={t}
+                  onClick={() => setter(v)}
+                  className={`flex-1 rounded-xl py-2 text-xs font-semibold ${
+                    value === v ? 'bg-primary text-primary-ink' : 'bg-surface-3 text-ink-2'
+                  }`}
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
+          ))}
+
+          <button
+            className="rounded-xl bg-primary py-3 text-sm font-bold text-primary-ink active:opacity-80"
+            onClick={async () => {
+              const ticket = Number(ticketText);
+              await eventRepository.updateInfo(event.id, {
+                ticketPerAdult:
+                  ticketText.trim() !== '' && Number.isFinite(ticket) && ticket >= 0
+                    ? Math.round(ticket)
+                    : undefined,
+                needsBooking,
+                hasLockers,
+                hasToilets,
+                webUrl: webUrl.trim() || undefined,
+              });
+              onClose();
+            }}
+          >
+            儲存資訊
+          </button>
+          <button className="text-sm text-ink-3" onClick={() => setView('actions')}>‹ 返回</button>
         </div>
       )}
 

@@ -72,6 +72,9 @@ export default function PlacesPage() {
         name: editing.name,
         mealTypes: editing.mealTypes,
         myRating: editing.myRating,
+        recommended: editing.recommended,
+        queueNote: editing.queueNote,
+        cardAccepted: editing.cardAccepted,
         needsReservation: editing.needsReservation,
         priceRange: editing.priceRange,
         hours: editing.hours,
@@ -125,6 +128,8 @@ export default function PlacesPage() {
       hours: form.hours?.trim() || undefined,
       webUrl: form.webUrl?.trim() || undefined,
       menuUrl: form.menuUrl?.trim() || undefined,
+      recommended: form.recommended?.trim() || undefined,
+      queueNote: form.queueNote?.trim() || undefined,
       note: form.note?.trim() || undefined,
       location: coordsText.trim() ? parseCoords(coordsText) : undefined,
     };
@@ -233,12 +238,19 @@ export default function PlacesPage() {
                     )}
                     {p.priceRange && <span>💴 {p.priceRange}</span>}
                     {p.hours && <span>🕐 {p.hours}</span>}
+                    {p.cardAccepted !== undefined && (
+                      <span>{p.cardAccepted ? '💳 可刷卡' : '💴 僅現金'}</span>
+                    )}
+                    {p.queueNote && <span>🕰 {p.queueNote}</span>}
                     {dist !== undefined && (
                       <span className="font-semibold text-accent">
                         📍 直線約 {dist < 1 ? `${Math.round(dist * 1000)}m` : `${dist.toFixed(1)}km`}
                       </span>
                     )}
                   </p>
+                  {p.recommended && (
+                    <p className="mt-1 text-xs font-semibold text-primary">👍 推薦:{p.recommended}</p>
+                  )}
                   {p.note && <p className="mt-1 text-xs text-ink-3">{p.note}</p>}
                 </button>
 
@@ -261,6 +273,13 @@ export default function PlacesPage() {
                     className="rounded-full bg-surface-3 px-3 py-1.5 text-xs font-semibold text-ink-2 active:opacity-70"
                   >
                     🗺️ 地點
+                  </a>
+                  <a
+                    href={`https://www.google.com/search?q=${encodeURIComponent(`${p.name} 評論`)}`}
+                    target="_blank" rel="noreferrer"
+                    className="rounded-full bg-surface-3 px-3 py-1.5 text-xs font-semibold text-ink-2 active:opacity-70"
+                  >
+                    💬 評論
                   </a>
                   {p.webUrl && (
                     <a href={p.webUrl} target="_blank" rel="noreferrer"
@@ -438,6 +457,35 @@ export default function PlacesPage() {
                   {label}
                 </button>
               ))}
+            </div>
+
+            <div className="flex gap-2">
+              {([[true, '💳 可刷卡'], [false, '僅現金'], [undefined, '不確定']] as const).map(([v, label]) => (
+                <button
+                  key={label}
+                  onClick={() => setForm({ ...form, cardAccepted: v })}
+                  className={`flex-1 rounded-xl py-2 text-xs font-semibold ${
+                    form.cardAccepted === v ? 'bg-primary text-primary-ink' : 'bg-surface-3 text-ink-2'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-semibold text-ink-2">推薦料理(選填)</label>
+                <input className={input} value={form.recommended ?? ''}
+                  onChange={(e) => setForm({ ...form, recommended: e.target.value })}
+                  placeholder="章魚燒、明太子玉子燒" />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-ink-2">排隊時間(選填)</label>
+                <input className={input} value={form.queueNote ?? ''}
+                  onChange={(e) => setForm({ ...form, queueNote: e.target.value })}
+                  placeholder="平日15分,假日30分+" />
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
