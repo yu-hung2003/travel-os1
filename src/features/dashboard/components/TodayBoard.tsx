@@ -5,6 +5,7 @@ import { db } from '@/data/db';
 import { tripRepository } from '@/data/repositories/tripRepository';
 import { typeMeta } from '@/features/timeline/eventMeta';
 import { ProgressRing } from '@/features/dashboard/components/ProgressRing';
+import { gmapsDirectionsUrl } from '@/shared/utils/maps';
 import type { TimelineEvent, Trip, TripDay } from '@/domain/types';
 
 const WEEKDAY = ['日', '一', '二', '三', '四', '五', '六'];
@@ -100,7 +101,20 @@ export function TodayBoard({ trip, day, now, preview = false }: Props) {
 
       {/* next / ongoing event */}
       {focusEvent ? (
-        <Link to={`/timeline?day=${day.id}`} className="card block p-5 active:opacity-80">
+        <Link to={`/timeline?day=${day.id}`} className="card relative block p-5 active:opacity-80">
+          <a
+            href={gmapsDirectionsUrl({
+              destination: focusEvent.location ?? focusEvent.transit?.to ?? focusEvent.placeName ?? focusEvent.title,
+              mode: focusEvent.transit?.mode === 'walk' ? 'walking'
+                : focusEvent.transit?.mode === 'taxi' ? 'driving' : 'transit',
+            })}
+            target="_blank"
+            rel="noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="absolute right-4 top-4 rounded-full bg-primary px-3 py-1.5 text-xs font-bold text-primary-ink active:opacity-80"
+          >
+            🧭 導航
+          </a>
           <p className="text-xs font-semibold text-ink-2">
             {ongoing ? '🔵 進行中' : '⏭️ 下一個行程'}
           </p>

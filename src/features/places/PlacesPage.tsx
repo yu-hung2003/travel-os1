@@ -4,7 +4,7 @@ import { db } from '@/data/db';
 import { tripRepository } from '@/data/repositories/tripRepository';
 import { placeRepository, type PlaceInput } from '@/data/repositories/placeRepository';
 import { BottomSheet } from '@/shared/components/BottomSheet';
-import { distanceKm, gmapsDirectionsUrl, gmapsSearchUrl } from '@/shared/utils/maps';
+import { distanceKm, gmapsDirectionsUrl, gmapsSearchUrl, parseGoogleMapsUrl } from '@/shared/utils/maps';
 import type { GeoPoint, Place, PlaceStatus } from '@/domain/types';
 
 const statusMeta: Record<PlaceStatus, { label: string; cls: string }> = {
@@ -41,6 +41,8 @@ export default function PlacesPage() {
   const [editing, setEditing] = useState<Place | 'new' | null>(null);
   const [form, setForm] = useState<PlaceInput | null>(null);
   const [coordsText, setCoordsText] = useState('');
+  const [gmLink, setGmLink] = useState('');
+  const [gmLinkMsg, setGmLinkMsg] = useState<string | null>(null);
   const [myLocation, setMyLocation] = useState<GeoPoint | null>(null);
   const [locating, setLocating] = useState(false);
 
@@ -49,6 +51,8 @@ export default function PlacesPage() {
     if (editing === 'new') {
       setForm({ tripId: trip.id, name: '', status: 'candidate' });
       setCoordsText('');
+      setGmLink('');
+      setGmLinkMsg(null);
     } else {
       setForm({
         tripId: trip.id,
@@ -229,6 +233,57 @@ export default function PlacesPage() {
       >
         {form && (
           <div className="flex flex-col gap-3">
+            {editing === 'new' && (
+              <div className="rounded-xl bg-surface-3 p-3">
+                <label className="text-xs font-semibold text-ink-2">
+                  ⚡ 懶人匯入:貼上 Google Maps 完整連結,自動帶入店名與座標
+                </label>
+                <div className="mt-1.5 flex gap-2">
+                  <input
+                    value={gmLink}
+                    onChange={(e) => setGmLink(e.target.value)}
+                    placeholder="https://www.google.com/maps/place/…"
+                    className="min-w-0 flex-1 rounded-xl border border-line bg-surface p-2.5 text-sm outline-none focus:border-primary"
+                  />
+                  <button
+                    disabled={!gmLink.trim()}
+                    onClick={() => {
+                      const parsed = parseGoogleMapsUrl(gmLink);
+                      if (!parsed) {
+                        setGmLinkMsg(
+                          /goo\.gl|maps\.app/i.test(gmLink)
+                            ? '這是短連結,無法直接解析。請先在瀏覽器開啟該連結,再從網址列複製完整網址貼入。'
+                            : '無法解析這個連結,請確認是 Google Maps 的地點網址。',
+                        );
+                        return;
+                      }
+                      setForm((f) => f ? {
+                        ...f,
+                        name: parsed.name ?? f.name,
+                        webUrl: f.webUrl ?? gmLink.trim(),
+                      } : f);
+                      if (parsed.location) {
+                        setCoordsText(`${parsed.location.lat}, ${parsed.location.lng}`);
+                      }
+                      setGmLinkMsg(
+                        parsed.name
+                          ? `✅ 已帶入:${parsed.name}${parsed.location ? '(含座標)' : ''}`
+                          : '✅ 已帶入座標,店名請自行填寫。',
+                      );
+                    }}
+                    className="shrink-0 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-primary-ink disabled:opacity-40 active:opacity-80"
+                  >
+                    帶入
+                  </button>
+                </div>
+                {gmLinkMsg && (
+                  <p className={`mt-1.5 text-xs ${gmLinkMsg.startsWith('✅') ? 'text-success' : 'text-warning'}`}>
+                    {gmLinkMsg}
+                  </p>
+                )}
+              </div>
+            )}
+
             <div>
               <label className="text-xs font-semibold text-ink-2">店名</label>
               <input className={input} value={form.name}

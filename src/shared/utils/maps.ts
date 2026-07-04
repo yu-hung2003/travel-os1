@@ -12,8 +12,10 @@ export function gmapsDirectionsUrl(opts: {
   origin?: string | GeoPoint;
   mode?: TravelMode;
 }): string {
+  // NOTE: URLSearchParams encodes values itself — passing pre-encoded
+  // strings here caused double-encoding (Google Maps showed literal %E4%BA%AC…).
   const fmt = (v: string | GeoPoint) =>
-    typeof v === 'string' ? encodeURIComponent(v) : `${v.lat},${v.lng}`;
+    typeof v === 'string' ? v : `${v.lat},${v.lng}`;
   const params = new URLSearchParams({ api: '1' });
   params.set('destination', fmt(opts.destination));
   if (opts.origin) params.set('origin', fmt(opts.origin));
@@ -31,4 +33,40 @@ export function distanceKm(a: GeoPoint, b: GeoPoint): number {
   const h =
     Math.sin(dLat / 2) ** 2 + Math.cos(la) * Math.cos(lb) * Math.sin(dLng / 2) ** 2;
   return 2 * R * Math.asin(Math.sqrt(h));
+}
+
+
+/**
+ * Extract name/coords from a FULL Google Maps URL
+ * (e.g. https://www.google.com/maps/place/店名/@34.66,135.50,17z/data=!3d34.6687!4d135.5013).
+ * Short links (maps.app.goo.gl) cannot be resolved client-side (CORS) — callers
+ * should tell users to open the short link once and copy the full URL.
+ */
+export function parseGoogleMapsUrl(raw: string): { name?: string; location?: GeoPoint } | undefined {
+  const url = raw.trim();
+  if (!/google\.[a-z.]+\/maps|maps\.google/i.test(url)) return undefined;
+
+  let name: string | undefined;
+  const placeMatch = url.match(/\/maps\/place\/([^/@?]+)/i);
+  if (placeMatch) {
+    try {
+      name = decodeURIComponent(placeMatch[1].replace(/\+/g, ' ')).trim() || undefined;
+    } catch {
+      name = placeMatch[1].replace(/\+/g, ' ');
+    }
+  }
+
+  let location: GeoPoint | undefined;
+  // pin coords (most precise) e.g. !3d34.6687!4d135.5013
+  const pin = url.match(/!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/);
+  if (pin) {
+    location = { lat: Number(pin[1]), lng: Number(pin[2]) };
+  } else {
+    // viewport coords e.g. @34.6687,135.5013,17z
+    const at = url.match(/@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/);
+    if (at) location = { lat: Number(at[1]), lng: Number(at[2]) };
+  }
+
+  if (!name && !location) return undefined;
+  return { name, location };
 }

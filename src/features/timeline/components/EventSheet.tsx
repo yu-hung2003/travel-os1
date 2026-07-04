@@ -119,6 +119,20 @@ export function EventSheet({ event, days, onClose }: Props) {
             >
               🧭 導航前往
             </a>
+            {event.transit?.from && event.transit?.to && (
+              <a
+                className={actionBtn}
+                href={gmapsDirectionsUrl({
+                  origin: event.transit.from,
+                  destination: event.transit.to,
+                  mode: navMode,
+                })}
+                target="_blank"
+                rel="noreferrer"
+              >
+                🚏 導航此段(A→B)
+              </a>
+            )}
             <button className={actionBtn} onClick={() => setView('transit')}>
               🚃 編輯交通資訊
             </button>
