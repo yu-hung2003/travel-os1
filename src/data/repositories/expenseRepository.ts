@@ -9,6 +9,7 @@ export const expenseRepository = {
     category: ExpenseCategory;
     amount: number;
     note?: string;
+    memberIds?: string[];
   }): Promise<void> {
     const expense: Expense = {
       id: newId(),
@@ -17,6 +18,7 @@ export const expenseRepository = {
       category: input.category,
       amount: input.amount,
       note: input.note?.trim() || undefined,
+      memberIds: input.memberIds ?? [],
       timestamp: Date.now(),
     };
     await db.expenses.add(expense);

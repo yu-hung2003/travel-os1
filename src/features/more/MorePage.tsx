@@ -1,6 +1,7 @@
 import { useTheme } from '@/shared/hooks/useTheme';
 import type { ThemePref } from '@/domain/types';
 import { InstallCard } from '@/features/more/components/InstallCard';
+import { Link } from 'react-router-dom';
 
 const options: { value: ThemePref; label: string }[] = [
   { value: 'light', label: '淺色' },
@@ -16,6 +17,14 @@ export default function MorePage() {
       <h1 className="text-2xl font-bold">更多</h1>
 
       <InstallCard />
+
+      <Link to="/packing" className="card flex items-center justify-between p-5 active:opacity-80">
+        <div>
+          <h2 className="text-sm font-bold">🧳 行李清單</h2>
+          <p className="mt-0.5 text-xs text-ink-3">隨身 + 託運分區打包,出發前逐項勾選</p>
+        </div>
+        <span className="text-ink-3">›</span>
+      </Link>
 
       <section className="card p-5">
         <h2 className="text-sm font-semibold text-ink-2">外觀主題</h2>
@@ -39,9 +48,8 @@ export default function MorePage() {
       <section className="card p-5">
         <h2 className="text-sm font-semibold text-ink-2">即將加入</h2>
         <ul className="mt-2 space-y-1.5 text-sm text-ink-3">
-          <li>旅行日記（Phase 7）</li>
-          <li>行李清單（Phase 7）</li>
-          <li>天氣與智慧提醒（Phase 8-9）</li>
+          <li>天氣與地圖整合（Phase 8）</li>
+          <li>智慧提醒與重新排程（Phase 9）</li>
         </ul>
       </section>
 

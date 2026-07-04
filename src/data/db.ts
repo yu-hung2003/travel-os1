@@ -34,6 +34,12 @@ export class TravelOSDB extends Dexie {
       weatherCache: 'locationKey, fetchedAt',
       prefs: 'key',
     });
+    // v2: expenses gain memberIds (multi-member tagging)
+    this.version(2).upgrade(async (tx) => {
+      await tx.table('expenses').toCollection().modify((e: { memberIds?: string[]; paidBy?: string }) => {
+        if (!e.memberIds) e.memberIds = e.paidBy ? [e.paidBy] : [];
+      });
+    });
   }
 }
 

@@ -108,7 +108,10 @@ export interface Expense {
   category: ExpenseCategory;
   amount: number;            // trip currency
   amountHome?: number;       // converted, optional
-  paidBy?: ID;               // traveler id
+  /** tagged members; empty/undefined = shared by everyone */
+  memberIds?: ID[];
+  /** @deprecated superseded by memberIds (kept for v1 data) */
+  paidBy?: ID;
   note?: string;
   timestamp: number;
 }
@@ -123,10 +126,14 @@ export interface JournalEntry {
   updatedAt: number;
 }
 
+export type BagKind = 'carry' | 'checked';
+
 export interface PackingItem {
   id: ID;
   tripId: ID;
-  category: string;          // e.g. '衣物' | '電子' | '防暑'
+  /** carry-on (隨身) vs checked luggage (託運大件) */
+  bag: BagKind;
+  category: string;          // e.g. '證件' | '電子' | '防暑' | '衣物'
   name: string;
   qty: number;
   checked: boolean;

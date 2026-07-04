@@ -12,6 +12,7 @@ const TimelinePage = lazy(() => import('@/features/timeline/TimelinePage'));
 const MapPage = lazy(() => import('@/features/map/MapPage'));
 const ExpensePage = lazy(() => import('@/features/expense/ExpensePage'));
 const MorePage = lazy(() => import('@/features/more/MorePage'));
+const PackingPage = lazy(() => import('@/features/packing/PackingPage'));
 
 function Shell() {
   return (
@@ -45,6 +46,7 @@ const router = createBrowserRouter([
       { path: '/map', element: <MapPage /> },
       { path: '/expense', element: <ExpensePage /> },
       { path: '/more', element: <MorePage /> },
+      { path: '/packing', element: <PackingPage /> },
     ],
   },
 ]);

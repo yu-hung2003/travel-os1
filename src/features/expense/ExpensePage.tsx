@@ -7,6 +7,7 @@ import { expenseRepository } from '@/data/repositories/expenseRepository';
 import { categoryMeta, categoryOrder } from '@/features/expense/categoryMeta';
 import { AddExpenseSheet } from '@/features/expense/components/AddExpenseSheet';
 import { BudgetSheet } from '@/features/expense/components/BudgetSheet';
+import { MembersSheet } from '@/features/expense/components/MembersSheet';
 import type { Expense } from '@/domain/types';
 
 function yen(n: number): string {
@@ -33,11 +34,34 @@ export default function ExpensePage() {
 
   const [adding, setAdding] = useState(false);
   const [editingBudget, setEditingBudget] = useState(false);
+  const [editingMembers, setEditingMembers] = useState(false);
+  // member filter: null = include everyone (no filtering)
+  const [selectedMemberIds, setSelectedMemberIds] = useState<string[] | null>(null);
+
+  const toggleFilterMember = (id: string, allIds: string[]) => {
+    setSelectedMemberIds((cur) => {
+      const base = cur ?? allIds;
+      const next = base.includes(id) ? base.filter((x) => x !== id) : [...base, id];
+      // selecting everyone again = back to unfiltered
+      return next.length === allIds.length ? null : next;
+    });
+  };
 
   const dayById = useMemo(() => new Map((days ?? []).map((d) => [d.id, d])), [days]);
 
-  const stats = useMemo(() => {
+  // filter: a record is included when it is shared (no member tags)
+  // or when it has at least one member that is still selected.
+  const filteredExpenses = useMemo(() => {
     const list = expenses ?? [];
+    if (!selectedMemberIds) return list;
+    const sel = new Set(selectedMemberIds);
+    return list.filter(
+      (e) => !e.memberIds || e.memberIds.length === 0 || e.memberIds.some((id) => sel.has(id)),
+    );
+  }, [expenses, selectedMemberIds]);
+
+  const stats = useMemo(() => {
+    const list = filteredExpenses;
     const total = list.reduce((s, e) => s + e.amount, 0);
     const todayIso = format(new Date(), 'yyyy-MM-dd');
     const todayDay = (days ?? []).find((d) => d.date === todayIso);
@@ -52,7 +76,7 @@ export default function ExpensePage() {
       .filter((x) => x.sum > 0)
       .sort((a, b) => b.sum - a.sum);
     return { total, today, byCategory };
-  }, [expenses, days]);
+  }, [filteredExpenses, days]);
 
   if (!trip || !days || !expenses) return null;
 
@@ -63,7 +87,7 @@ export default function ExpensePage() {
 
   // group by day for the list
   const groups = new Map<string, Expense[]>();
-  for (const e of expenses) {
+  for (const e of filteredExpenses) {
     const key = e.dayId ?? '__none__';
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key)!.push(e);
@@ -78,16 +102,59 @@ export default function ExpensePage() {
     <div className="flex flex-col gap-3 py-5">
       <header className="flex items-baseline justify-between">
         <h1 className="text-2xl font-bold">花費</h1>
-        <button className="text-sm font-semibold text-primary" onClick={() => setEditingBudget(true)}>
-          {budget !== undefined ? '調整預算' : '設定預算'}
-        </button>
+        <div className="flex gap-4">
+          <button className="text-sm font-semibold text-primary" onClick={() => setEditingMembers(true)}>
+            成員
+          </button>
+          <button className="text-sm font-semibold text-primary" onClick={() => setEditingBudget(true)}>
+            {budget !== undefined ? '調整預算' : '設定預算'}
+          </button>
+        </div>
       </header>
+
+      {/* member filter */}
+      {trip.travelers.length > 1 && (
+        <div className="-mx-4 overflow-x-auto px-4">
+          <div className="flex w-max items-center gap-1.5">
+            <button
+              onClick={() => setSelectedMemberIds(null)}
+              className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
+                selectedMemberIds === null ? 'bg-primary text-primary-ink' : 'bg-surface-2 border border-line/60 text-ink-2'
+              }`}
+            >
+              全部
+            </button>
+            {trip.travelers.map((t) => {
+              const allIds = trip.travelers.map((x) => x.id);
+              const active = selectedMemberIds === null || selectedMemberIds.includes(t.id);
+              return (
+                <button
+                  key={t.id}
+                  onClick={() => toggleFilterMember(t.id, allIds)}
+                  className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
+                    active ? 'bg-accent text-white' : 'bg-surface-2 border border-line/60 text-ink-3 line-through'
+                  }`}
+                >
+                  {t.name}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+      {selectedMemberIds !== null && (
+        <p className="-mt-1 text-xs text-ink-3">
+          統計僅列入勾選成員的紀錄;全體共同的紀錄一律列入。
+        </p>
+      )}
 
       {/* summary */}
       <section className="card p-5">
         <div className="flex items-baseline justify-between">
           <p className="text-xs font-semibold text-ink-2">全旅程支出</p>
-          <p className="text-xs text-ink-3">每人約 {yen(perPerson)}</p>
+          {selectedMemberIds === null && (
+            <p className="text-xs text-ink-3">每人約 {yen(perPerson)}</p>
+          )}
         </div>
         <p className="mt-1 text-3xl font-bold tabular-nums">{yen(stats.total)}</p>
 
@@ -170,7 +237,17 @@ export default function ExpensePage() {
                   <li key={e.id} className="flex items-center gap-3 py-2.5">
                     <span className="text-lg">{categoryMeta[e.category].emoji}</span>
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold">{categoryMeta[e.category].label}</p>
+                      <p className="text-sm font-semibold">
+                        {categoryMeta[e.category].label}
+                        <span className="ml-1.5 text-xs font-normal text-accent">
+                          {e.memberIds && e.memberIds.length > 0
+                            ? e.memberIds
+                                .map((id) => trip.travelers.find((t) => t.id === id)?.name)
+                                .filter(Boolean)
+                                .join('、')
+                            : '共同'}
+                        </span>
+                      </p>
                       {e.note && <p className="truncate text-xs text-ink-3">{e.note}</p>}
                     </div>
                     <span className="text-sm font-bold tabular-nums">{yen(e.amount)}</span>
@@ -191,7 +268,14 @@ export default function ExpensePage() {
         })
       )}
 
-      <AddExpenseSheet open={adding} tripId={trip.id} days={days} onClose={() => setAdding(false)} />
+      <AddExpenseSheet
+        open={adding}
+        tripId={trip.id}
+        days={days}
+        travelers={trip.travelers}
+        onClose={() => setAdding(false)}
+      />
+      <MembersSheet open={editingMembers} trip={trip} onClose={() => setEditingMembers(false)} />
       <BudgetSheet
         open={editingBudget}
         tripId={trip.id}
