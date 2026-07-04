@@ -83,13 +83,23 @@ export function EventCard({ event, onOpen, slot, closing, staleTransit = false }
                   <>{transitModeEmoji[event.transit.mode] ?? '🚃'} </>
                 )}
                 {[
-                  event.transit.line,
-                  event.transit.durationMin ? `${event.transit.durationMin}分` : undefined,
+                  [event.transit.trainType, event.transit.line].filter(Boolean).join(' '),
+                  event.transit.durationMin ? `車程${event.transit.durationMin}分` : undefined,
+                  event.transit.walkMin ? `步行${event.transit.walkMin}分` : undefined,
                   event.transit.distanceKm ? `${event.transit.distanceKm}km` : undefined,
-                  event.transit.farePerAdult ? `¥${event.transit.farePerAdult.toLocaleString()}/大人` : undefined,
+                  event.transit.farePerAdult ? `¥${event.transit.farePerAdult.toLocaleString()}/人` : undefined,
                   event.transit.fareNote,
                 ].filter(Boolean).join(' · ')}
               </span>
+              {(event.transit.station || event.transit.platform || event.transit.exit) && (
+                <span className="mt-0.5 block text-xs font-semibold text-ink-2">
+                  🚉 {[
+                    event.transit.station,
+                    event.transit.platform ? `${event.transit.platform}月台` : undefined,
+                    event.transit.exit ? `${event.transit.exit}出口` : undefined,
+                  ].filter(Boolean).join(' · ')}
+                </span>
+              )}
             </span>
           )}
           {staleTransit && (

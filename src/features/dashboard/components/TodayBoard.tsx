@@ -8,6 +8,7 @@ import { ProgressRing } from '@/features/dashboard/components/ProgressRing';
 import { gmapsDirectionsUrl } from '@/shared/utils/maps';
 import { WeatherCard } from '@/features/dashboard/components/WeatherCard';
 import { SmartSuggestions } from '@/features/dashboard/components/SmartSuggestions';
+import { CurrencyConverter } from '@/shared/components/CurrencyConverter';
 import type { TimelineEvent, Trip, TripDay } from '@/domain/types';
 import { computeSchedule } from '@/domain/schedule';
 
@@ -191,6 +192,8 @@ export function TodayBoard({ trip, day, now, preview = false }: Props) {
           </ul>
         </section>
       )}
+
+      <CurrencyConverter compact />
 
       {/* accommodation */}
       {accommodation && (

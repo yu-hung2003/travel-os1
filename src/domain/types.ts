@@ -112,12 +112,17 @@ export interface TimelineEvent {
 
 export interface TransitInfo {
   mode: 'train' | 'subway' | 'bus' | 'taxi' | 'walk' | 'flight' | 'boat';
-  line?: string;             // e.g. 'JR 奈良線（區間快速）'
-  from?: string;
-  to?: string;
-  durationMin?: number;
+  line?: string;             // 路線 e.g. 'JR 奈良線（區間快速）'
+  from?: string;             // 起點
+  to?: string;               // 終點
+  station?: string;          // 車站(上車站/轉乘站)
+  platform?: string;         // 月台
+  exit?: string;             // 出口
+  trainType?: string;        // 車種 e.g. '新快速' '特急'
+  durationMin?: number;      // 車程(分)
+  walkMin?: number;          // 步行(分)
   distanceKm?: number;
-  farePerAdult?: number;     // trip currency
+  farePerAdult?: number;     // 票價(trip currency)
   fareNote?: string;         // e.g. '兒童半價'
 }
 
@@ -155,6 +160,8 @@ export interface Place {
   menuUrl?: string;
   location?: GeoPoint;
   note?: string;
+  /** personal rating after visiting, 1-5 */
+  myRating?: number;
   status: PlaceStatus;
   createdAt: number;
   updatedAt: number;

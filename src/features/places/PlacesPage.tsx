@@ -71,6 +71,7 @@ export default function PlacesPage() {
         tripId: trip.id,
         name: editing.name,
         mealTypes: editing.mealTypes,
+        myRating: editing.myRating,
         needsReservation: editing.needsReservation,
         priceRange: editing.priceRange,
         hours: editing.hours,
@@ -219,6 +220,9 @@ export default function PlacesPage() {
                     </span>
                   </div>
                   <p className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-ink-2">
+                    {p.myRating && (
+                      <span className="font-bold text-warning">⭐ {p.myRating}/5</span>
+                    )}
                     {p.mealTypes && p.mealTypes.length > 0 && (
                       <span>{p.mealTypes.map((m) => `${mealMeta[m].emoji}${mealMeta[m].label}`).join(' ')}</span>
                     )}
@@ -270,7 +274,7 @@ export default function PlacesPage() {
                       📖 菜單
                     </a>
                   )}
-                  {p.status !== 'scheduled' && p.status !== 'visited' && (
+                  {p.status !== 'scheduled' && (
                     <button
                       onClick={() => setScheduling(p)}
                       className="rounded-full bg-primary px-3 py-1.5 text-xs font-bold text-primary-ink active:opacity-80"
@@ -399,6 +403,26 @@ export default function PlacesPage() {
                     </button>
                   );
                 })}
+              </div>
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold text-ink-2">個人評分(去過後填,點星星)</label>
+              <div className="mt-1 flex items-center gap-1">
+                {[1, 2, 3, 4, 5].map((n) => (
+                  <button
+                    key={n}
+                    onClick={() =>
+                      setForm({ ...form, myRating: form.myRating === n ? undefined : n })
+                    }
+                    className={`text-2xl ${((form.myRating ?? 0) >= n) ? '' : 'opacity-25 grayscale'}`}
+                  >
+                    ⭐
+                  </button>
+                ))}
+                {form.myRating && (
+                  <span className="ml-1 text-sm font-bold text-ink-2">{form.myRating}/5</span>
+                )}
               </div>
             </div>
 

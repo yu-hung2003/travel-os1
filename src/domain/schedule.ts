@@ -25,7 +25,11 @@ const DEFAULT_DURATION: Record<EventType, number> = {
 
 export function effectiveDuration(e: TimelineEvent): number {
   if (e.durationMin && e.durationMin > 0) return e.durationMin;
-  if (e.type === 'transport' && e.transit?.durationMin) return e.transit.durationMin;
+  if (e.type === 'transport') {
+    const ride = e.transit?.durationMin ?? 0;
+    const walk = e.transit?.walkMin ?? 0;
+    if (ride + walk > 0) return ride + walk;
+  }
   return DEFAULT_DURATION[e.type];
 }
 

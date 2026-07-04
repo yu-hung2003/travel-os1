@@ -59,18 +59,24 @@ export function EventSheet({ event, days, dayEvents = [], onClose }: Props) {
       line: transit.line?.trim() || undefined,
       from: transit.from?.trim() || undefined,
       to: transit.to?.trim() || undefined,
+      station: transit.station?.trim() || undefined,
+      platform: transit.platform?.trim() || undefined,
+      exit: transit.exit?.trim() || undefined,
+      trainType: transit.trainType?.trim() || undefined,
       durationMin: transit.durationMin || undefined,
+      walkMin: transit.walkMin || undefined,
       distanceKm: transit.distanceKm || undefined,
       farePerAdult: transit.farePerAdult || undefined,
       fareNote: transit.fareNote?.trim() || undefined,
     };
-    const empty = !cleaned.line && !cleaned.from && !cleaned.to &&
-      !cleaned.durationMin && !cleaned.distanceKm && !cleaned.farePerAdult;
+    const empty = !cleaned.line && !cleaned.from && !cleaned.to && !cleaned.station &&
+      !cleaned.durationMin && !cleaned.walkMin && !cleaned.distanceKm && !cleaned.farePerAdult;
 
     if (event.type === 'transport') {
       // transport cards edit their own transit info; editing re-confirms the route
       await eventRepository.updateTransit(event.id, empty ? undefined : cleaned);
-      if (cleaned.durationMin) await eventRepository.updateDuration(event.id, cleaned.durationMin);
+      const total = (cleaned.durationMin ?? 0) + (cleaned.walkMin ?? 0);
+      if (total > 0) await eventRepository.updateDuration(event.id, total);
       const { neighborSigOf } = await import('@/domain/schedule');
       await eventRepository.confirmNeighborSig(event.id, neighborSigOf(dayEvents, event.id));
     } else {
@@ -348,17 +354,47 @@ export function EventSheet({ event, days, dayEvents = [], onClose }: Props) {
                 onChange={(e) => setTransit({ ...transit, to: e.target.value })} placeholder="梅田站" />
             </div>
           </div>
-          <div>
-            <label className="text-xs font-semibold text-ink-2">路線/班次(選填)</label>
-            <input className={input} value={transit.line ?? ''}
-              onChange={(e) => setTransit({ ...transit, line: e.target.value })} placeholder="御堂筋線" />
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-semibold text-ink-2">路線/班次</label>
+              <input className={input} value={transit.line ?? ''}
+                onChange={(e) => setTransit({ ...transit, line: e.target.value })} placeholder="御堂筋線" />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-ink-2">車種</label>
+              <input className={input} value={transit.trainType ?? ''}
+                onChange={(e) => setTransit({ ...transit, trainType: e.target.value })} placeholder="新快速 / 特急" />
+            </div>
           </div>
           <div className="grid grid-cols-3 gap-2">
             <div>
-              <label className="text-xs font-semibold text-ink-2">分鐘</label>
+              <label className="text-xs font-semibold text-ink-2">車站</label>
+              <input className={input} value={transit.station ?? ''}
+                onChange={(e) => setTransit({ ...transit, station: e.target.value })} placeholder="難波站" />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-ink-2">月台</label>
+              <input className={input} value={transit.platform ?? ''}
+                onChange={(e) => setTransit({ ...transit, platform: e.target.value })} placeholder="2號" />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-ink-2">出口</label>
+              <input className={input} value={transit.exit ?? ''}
+                onChange={(e) => setTransit({ ...transit, exit: e.target.value })} placeholder="5號" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-xs font-semibold text-ink-2">車程(分)</label>
               <input className={input} type="number" inputMode="numeric" min="0"
                 value={transit.durationMin ?? ''}
                 onChange={(e) => setTransit({ ...transit, durationMin: Number(e.target.value) || undefined })} />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-ink-2">步行(分)</label>
+              <input className={input} type="number" inputMode="numeric" min="0"
+                value={transit.walkMin ?? ''}
+                onChange={(e) => setTransit({ ...transit, walkMin: Number(e.target.value) || undefined })} />
             </div>
             <div>
               <label className="text-xs font-semibold text-ink-2">公里</label>
@@ -367,7 +403,7 @@ export function EventSheet({ event, days, dayEvents = [], onClose }: Props) {
                 onChange={(e) => setTransit({ ...transit, distanceKm: Number(e.target.value) || undefined })} />
             </div>
             <div>
-              <label className="text-xs font-semibold text-ink-2">車資/人</label>
+              <label className="text-xs font-semibold text-ink-2">票價/人</label>
               <input className={input} type="number" inputMode="numeric" min="0"
                 value={transit.farePerAdult ?? ''}
                 onChange={(e) => setTransit({ ...transit, farePerAdult: Number(e.target.value) || undefined })} />

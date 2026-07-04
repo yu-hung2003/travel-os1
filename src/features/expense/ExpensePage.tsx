@@ -8,6 +8,8 @@ import { categoryMeta, categoryOrder } from '@/features/expense/categoryMeta';
 import { AddExpenseSheet } from '@/features/expense/components/AddExpenseSheet';
 import { BudgetSheet } from '@/features/expense/components/BudgetSheet';
 import { MembersSheet } from '@/features/expense/components/MembersSheet';
+import { CurrencyConverter } from '@/shared/components/CurrencyConverter';
+import { useJpyTwd } from '@/shared/hooks/useJpyTwd';
 import type { Expense } from '@/domain/types';
 
 function yen(n: number): string {
@@ -35,6 +37,7 @@ export default function ExpensePage() {
   const [adding, setAdding] = useState(false);
   const [editingBudget, setEditingBudget] = useState(false);
   const [editingMembers, setEditingMembers] = useState(false);
+  const rate = useJpyTwd();
   // member filter: null = include everyone (no filtering)
   const [selectedMemberIds, setSelectedMemberIds] = useState<string[] | null>(null);
 
@@ -156,7 +159,14 @@ export default function ExpensePage() {
             <p className="text-xs text-ink-3">每人約 {yen(perPerson)}</p>
           )}
         </div>
-        <p className="mt-1 text-3xl font-bold tabular-nums">{yen(stats.total)}</p>
+        <p className="mt-1 text-3xl font-bold tabular-nums">
+          {yen(stats.total)}
+          {rate && (
+            <span className="ml-2 text-base font-semibold text-ink-3">
+              ≈ NT$ {Math.round(stats.total * rate.rate).toLocaleString()}
+            </span>
+          )}
+        </p>
 
         {budget !== undefined && remaining !== undefined && (
           <div className="mt-3">
@@ -176,9 +186,18 @@ export default function ExpensePage() {
 
         <div className="mt-3 flex items-center justify-between rounded-xl bg-surface-3 px-4 py-2.5">
           <span className="text-sm font-semibold text-ink-2">今日花費</span>
-          <span className="text-base font-bold tabular-nums">{yen(stats.today)}</span>
+          <span className="text-base font-bold tabular-nums">
+            {yen(stats.today)}
+            {rate && (
+              <span className="ml-1.5 text-xs font-semibold text-ink-3">
+                ≈ NT$ {Math.round(stats.today * rate.rate).toLocaleString()}
+              </span>
+            )}
+          </span>
         </div>
       </section>
+
+      <CurrencyConverter />
 
       <button
         onClick={() => setAdding(true)}
