@@ -82,6 +82,8 @@ export interface TimelineEvent {
   note?: string;
   /** warnings surfaced on Dashboard, e.g. '需提前 1-2 週預約' */
   alert?: string;
+  /** link back to a wishlist Place — enables completed→visited sync */
+  placeId?: ID;
   createdAt: number;
   updatedAt: number;
 }
@@ -113,13 +115,17 @@ export interface Transfer {
   updatedAt: number;
 }
 
-export type PlaceStatus = 'candidate' | 'chosen' | 'visited';
+export type PlaceStatus = 'candidate' | 'chosen' | 'scheduled' | 'visited';
+
+export type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack';
 
 /** Restaurant / spot wishlist entry */
 export interface Place {
   id: ID;
   tripId: ID;
   name: string;
+  /** which meals this place suits — multi-select */
+  mealTypes?: MealType[];
   needsReservation?: boolean;
   priceRange?: string;       // e.g. '¥1,000-2,000/人'
   hours?: string;            // e.g. '11:00-21:00,週三休'

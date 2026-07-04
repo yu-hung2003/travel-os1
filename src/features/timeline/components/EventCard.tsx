@@ -2,6 +2,7 @@ import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { TimelineEvent } from '@/domain/types';
 import { statusMeta, typeMeta } from '@/features/timeline/eventMeta';
+import { gmapsDirectionsUrl } from '@/shared/utils/maps';
 
 const transitModeEmoji: Record<string, string> = {
   walk: '🚶', bus: '🚌', train: '🚃', subway: '🚇', taxi: '🚕', boat: '⛴️', flight: '✈️',
@@ -93,19 +94,41 @@ export function EventCard({ event, onOpen }: Props) {
         </span>
       </button>
 
-      {/* drag handle */}
-      <button
-        aria-label="拖曳排序"
-        {...attributes}
-        {...listeners}
-        className="flex w-10 shrink-0 touch-none items-center justify-center border-l border-line/60 text-ink-3 active:bg-surface-3"
-      >
-        <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor">
-          <circle cx="9" cy="7" r="1.4" /><circle cx="15" cy="7" r="1.4" />
-          <circle cx="9" cy="12" r="1.4" /><circle cx="15" cy="12" r="1.4" />
-          <circle cx="9" cy="17" r="1.4" /><circle cx="15" cy="17" r="1.4" />
-        </svg>
-      </button>
+      {/* right rail: quick nav + drag handle */}
+      <span className="flex w-10 shrink-0 flex-col border-l border-line/60">
+        {(event.transit?.from && event.transit?.to) || event.location ? (
+          <a
+            aria-label="快捷導航"
+            href={
+              event.transit?.from && event.transit?.to
+                ? gmapsDirectionsUrl({
+                    origin: event.transit.from,
+                    destination: event.transit.to,
+                    mode: event.transit.mode === 'walk' ? 'walking'
+                      : event.transit.mode === 'taxi' ? 'driving' : 'transit',
+                  })
+                : gmapsDirectionsUrl({ destination: event.location! })
+            }
+            target="_blank"
+            rel="noreferrer"
+            className="flex flex-1 items-center justify-center text-base active:bg-surface-3"
+          >
+            🧭
+          </a>
+        ) : null}
+        <button
+          aria-label="拖曳排序"
+          {...attributes}
+          {...listeners}
+          className="flex flex-1 touch-none items-center justify-center text-ink-3 active:bg-surface-3"
+        >
+          <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor">
+            <circle cx="9" cy="7" r="1.4" /><circle cx="15" cy="7" r="1.4" />
+            <circle cx="9" cy="12" r="1.4" /><circle cx="15" cy="12" r="1.4" />
+            <circle cx="9" cy="17" r="1.4" /><circle cx="15" cy="17" r="1.4" />
+          </svg>
+        </button>
+      </span>
     </li>
   );
 }

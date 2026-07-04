@@ -4,16 +4,26 @@ import { db } from '@/data/db';
 import { tripRepository } from '@/data/repositories/tripRepository';
 import { placeRepository, type PlaceInput } from '@/data/repositories/placeRepository';
 import { BottomSheet } from '@/shared/components/BottomSheet';
+import { SchedulePlaceSheet } from '@/features/places/components/SchedulePlaceSheet';
 import { distanceKm, gmapsDirectionsUrl, gmapsSearchUrl, parseGoogleMapsUrl } from '@/shared/utils/maps';
-import type { GeoPoint, Place, PlaceStatus } from '@/domain/types';
+import type { GeoPoint, MealType, Place, PlaceStatus } from '@/domain/types';
 
 const statusMeta: Record<PlaceStatus, { label: string; cls: string }> = {
   candidate: { label: '備選', cls: 'bg-surface-3 text-ink-2' },
   chosen: { label: '已選定', cls: 'bg-primary/15 text-primary' },
+  scheduled: { label: '已加入行程', cls: 'bg-accent/15 text-accent' },
   visited: { label: '去過了', cls: 'bg-success/15 text-success' },
 };
 
-const statusOrder: PlaceStatus[] = ['chosen', 'candidate', 'visited'];
+const statusOrder: PlaceStatus[] = ['scheduled', 'chosen', 'candidate', 'visited'];
+
+const mealMeta: Record<MealType, { emoji: string; label: string }> = {
+  breakfast: { emoji: '🍳', label: '早餐' },
+  lunch: { emoji: '🍜', label: '中餐' },
+  dinner: { emoji: '🍽️', label: '晚餐' },
+  snack: { emoji: '🧋', label: '點心/飲料' },
+};
+const mealOrder: MealType[] = ['breakfast', 'lunch', 'dinner', 'snack'];
 
 function parseCoords(text: string): GeoPoint | undefined {
   const m = text.trim().match(/^(-?\d+(?:\.\d+)?)[,\s]+(-?\d+(?:\.\d+)?)$/);
@@ -39,12 +49,15 @@ export default function PlacesPage() {
   );
 
   const [editing, setEditing] = useState<Place | 'new' | null>(null);
+  const [scheduling, setScheduling] = useState<Place | null>(null);
   const [form, setForm] = useState<PlaceInput | null>(null);
   const [coordsText, setCoordsText] = useState('');
   const [gmLink, setGmLink] = useState('');
   const [gmLinkMsg, setGmLinkMsg] = useState<string | null>(null);
   const [myLocation, setMyLocation] = useState<GeoPoint | null>(null);
   const [locating, setLocating] = useState(false);
+  const [geoMsg, setGeoMsg] = useState<string | null>(null);
+  const [mealFilter, setMealFilter] = useState<MealType | null>(null);
 
   useEffect(() => {
     if (!trip || editing === null) return;
@@ -57,6 +70,7 @@ export default function PlacesPage() {
       setForm({
         tripId: trip.id,
         name: editing.name,
+        mealTypes: editing.mealTypes,
         needsReservation: editing.needsReservation,
         priceRange: editing.priceRange,
         hours: editing.hours,
@@ -73,15 +87,31 @@ export default function PlacesPage() {
   if (!trip || !places) return null;
 
   const locate = () => {
-    if (!navigator.geolocation) return;
+    if (!('geolocation' in navigator)) {
+      setGeoMsg('此裝置/瀏覽器不支援定位。');
+      return;
+    }
     setLocating(true);
+    setGeoMsg(null);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         setMyLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
         setLocating(false);
+        setGeoMsg(null);
       },
-      () => setLocating(false),
-      { enableHighAccuracy: false, timeout: 8000 },
+      (err) => {
+        setLocating(false);
+        if (err.code === 1) {
+          setGeoMsg(
+            '定位權限被拒。iPhone:設定 → 隱私權與安全性 → 定位服務 → Safari 網站 設為「使用 App 期間」;若加入主畫面開啟,請重新開啟 App 後再按一次並允許。',
+          );
+        } else if (err.code === 3) {
+          setGeoMsg('定位逾時,請到訊號較好的地方(室外)再試一次。');
+        } else {
+          setGeoMsg('暫時無法取得位置,稍後再試。');
+        }
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 60_000 },
     );
   };
 
@@ -105,8 +135,11 @@ export default function PlacesPage() {
   const input =
     'mt-1 w-full rounded-xl border border-line bg-surface p-2.5 text-sm outline-none focus:border-primary';
 
+  const visiblePlaces = mealFilter
+    ? places.filter((p) => p.mealTypes?.includes(mealFilter))
+    : places;
   const groups = statusOrder
-    .map((st) => ({ st, rows: places.filter((p) => p.status === st) }))
+    .map((st) => ({ st, rows: visiblePlaces.filter((p) => p.status === st) }))
     .filter((g) => g.rows.length > 0);
 
   return (
@@ -122,12 +155,44 @@ export default function PlacesPage() {
         </button>
       </header>
 
+      {geoMsg && (
+        <p className="rounded-xl bg-warning/10 px-3 py-2 text-xs font-semibold leading-relaxed text-warning">
+          📍 {geoMsg}
+        </p>
+      )}
+
       <button
         onClick={() => setEditing('new')}
         className="rounded-2xl bg-primary py-3.5 text-base font-bold text-primary-ink active:opacity-80"
       >
         ＋ 加入口袋名單
       </button>
+
+      {places.length > 0 && (
+        <div className="-mx-4 overflow-x-auto px-4">
+          <div className="flex w-max gap-1.5">
+            <button
+              onClick={() => setMealFilter(null)}
+              className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
+                mealFilter === null ? 'bg-primary text-primary-ink' : 'bg-surface-2 border border-line/60 text-ink-2'
+              }`}
+            >
+              全部
+            </button>
+            {mealOrder.map((m) => (
+              <button
+                key={m}
+                onClick={() => setMealFilter(mealFilter === m ? null : m)}
+                className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
+                  mealFilter === m ? 'bg-primary text-primary-ink' : 'bg-surface-2 border border-line/60 text-ink-2'
+                }`}
+              >
+                {mealMeta[m].emoji} {mealMeta[m].label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {places.length === 0 && (
         <p className="py-8 text-center text-sm text-ink-3">
@@ -154,6 +219,9 @@ export default function PlacesPage() {
                     </span>
                   </div>
                   <p className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-ink-2">
+                    {p.mealTypes && p.mealTypes.length > 0 && (
+                      <span>{p.mealTypes.map((m) => `${mealMeta[m].emoji}${mealMeta[m].label}`).join(' ')}</span>
+                    )}
                     {p.needsReservation !== undefined && (
                       <span className={p.needsReservation ? 'font-semibold text-warning' : ''}>
                         {p.needsReservation ? '📞 需訂位' : '免訂位'}
@@ -202,12 +270,28 @@ export default function PlacesPage() {
                       📖 菜單
                     </a>
                   )}
-                  {p.status !== 'chosen' && (
+                  {p.status !== 'scheduled' && p.status !== 'visited' && (
+                    <button
+                      onClick={() => setScheduling(p)}
+                      className="rounded-full bg-primary px-3 py-1.5 text-xs font-bold text-primary-ink active:opacity-80"
+                    >
+                      📅 排入行程
+                    </button>
+                  )}
+                  {p.status !== 'chosen' && p.status !== 'scheduled' && (
                     <button
                       onClick={() => placeRepository.setStatus(p.id, 'chosen')}
                       className="rounded-full bg-primary/15 px-3 py-1.5 text-xs font-semibold text-primary active:opacity-70"
                     >
                       ✓ 選定
+                    </button>
+                  )}
+                  {p.status !== 'candidate' && (
+                    <button
+                      onClick={() => placeRepository.setStatus(p.id, 'candidate')}
+                      className="rounded-full bg-surface-3 px-3 py-1.5 text-xs font-semibold text-ink-2 active:opacity-70"
+                    >
+                      ↩ 回備選
                     </button>
                   )}
                   {p.status !== 'visited' && (
@@ -291,6 +375,33 @@ export default function PlacesPage() {
                 placeholder="例如:たこ家道頓堀くくる" />
             </div>
 
+            <div>
+              <label className="text-xs font-semibold text-ink-2">分類(可複選)</label>
+              <div className="mt-1.5 flex flex-wrap gap-1.5">
+                {mealOrder.map((m) => {
+                  const on = form.mealTypes?.includes(m) ?? false;
+                  return (
+                    <button
+                      key={m}
+                      onClick={() =>
+                        setForm({
+                          ...form,
+                          mealTypes: on
+                            ? (form.mealTypes ?? []).filter((x) => x !== m)
+                            : [...(form.mealTypes ?? []), m],
+                        })
+                      }
+                      className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
+                        on ? 'bg-accent text-white' : 'bg-surface-3 text-ink-2'
+                      }`}
+                    >
+                      {mealMeta[m].emoji} {mealMeta[m].label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
             <div className="flex gap-2">
               {([[true, '📞 需訂位'], [false, '免訂位'], [undefined, '不確定']] as const).map(([v, label]) => (
                 <button
@@ -371,6 +482,10 @@ export default function PlacesPage() {
           </div>
         )}
       </BottomSheet>
+
+      {scheduling && (
+        <SchedulePlaceSheet place={scheduling} trip={trip} onClose={() => setScheduling(null)} />
+      )}
     </div>
   );
 }

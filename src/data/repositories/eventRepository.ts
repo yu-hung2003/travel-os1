@@ -1,11 +1,63 @@
 import { db } from '@/data/db';
 import { newId } from '@/shared/utils/id';
-import type { EventStatus, EventType, TimelineEvent, TransitInfo } from '@/domain/types';
+import type { EventStatus, EventType, Place, TimelineEvent, TransitInfo } from '@/domain/types';
 
 export const eventRepository = {
-  /** FSM transition; any status can return to 'scheduled' (undo). */
+  /** FSM transition; any status can return to 'scheduled' (undo).
+   *  Completing an event linked to a wishlist Place marks it 去過了. */
   async setStatus(eventId: string, status: EventStatus): Promise<void> {
-    await db.events.update(eventId, { status, updatedAt: Date.now() });
+    await db.transaction('rw', [db.events, db.places], async () => {
+      await db.events.update(eventId, { status, updatedAt: Date.now() });
+      const ev = await db.events.get(eventId);
+      if (ev?.placeId && status === 'completed') {
+        await db.places.update(ev.placeId, { status: 'visited', updatedAt: Date.now() });
+      }
+    });
+  },
+
+  /**
+   * Insert a standalone transport card immediately BEFORE the given event,
+   * renumbering the whole day so ordering stays consistent.
+   */
+  async insertTransportBefore(input: {
+    tripId: string;
+    dayId: string;
+    beforeEventId: string;
+    title: string;
+    transit: TransitInfo;
+    startTime?: string;
+  }): Promise<string> {
+    const id = newId();
+    await db.transaction('rw', db.events, async () => {
+      const siblings = await db.events.where('dayId').equals(input.dayId).sortBy('order');
+      const idx = siblings.findIndex((e) => e.id === input.beforeEventId);
+      const insertAt = idx < 0 ? siblings.length : idx;
+
+      const newEvent: TimelineEvent = {
+        id,
+        tripId: input.tripId,
+        dayId: input.dayId,
+        order: 0, // renumbered below
+        type: 'transport',
+        title: input.title,
+        startTime: input.startTime || undefined,
+        transit: input.transit,
+        status: 'scheduled',
+        isFavorite: false,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      };
+
+      const list = [...siblings];
+      list.splice(insertAt, 0, newEvent);
+      await db.events.add(newEvent);
+      await Promise.all(
+        list.map((e, i) =>
+          db.events.update(e.id, { order: i + 1, updatedAt: Date.now() }),
+        ),
+      );
+    });
+    return id;
   },
 
   async updateTransit(eventId: string, transit: TransitInfo | undefined): Promise<void> {
@@ -79,6 +131,70 @@ export const eventRepository = {
   },
 
   async deleteEvent(eventId: string): Promise<void> {
-    await db.events.delete(eventId);
+    await db.transaction('rw', [db.events, db.places], async () => {
+      const ev = await db.events.get(eventId);
+      await db.events.delete(eventId);
+      // deleting a scheduled wishlist visit returns the place to 已選定
+      if (ev?.placeId) {
+        const place = await db.places.get(ev.placeId);
+        if (place?.status === 'scheduled') {
+          await db.places.update(ev.placeId, { status: 'chosen', updatedAt: Date.now() });
+        }
+      }
+    });
+  },
+
+  /**
+   * Create a food event from a wishlist Place, inserted at day end or
+   * right after a given event; flips the place to 已加入行程.
+   */
+  async addFromPlace(input: {
+    place: Place;
+    dayId: string;
+    startTime?: string;
+    afterEventId?: string;
+  }): Promise<void> {
+    const { place } = input;
+    const noteParts = [
+      place.priceRange ? `💴 ${place.priceRange}` : undefined,
+      place.hours ? `🕐 ${place.hours}` : undefined,
+      place.webUrl,
+      place.note,
+    ].filter(Boolean);
+
+    await db.transaction('rw', [db.events, db.places], async () => {
+      const siblings = await db.events.where('dayId').equals(input.dayId).sortBy('order');
+      const newEvent: TimelineEvent = {
+        id: newId(),
+        tripId: place.tripId,
+        dayId: input.dayId,
+        order: 0,
+        type: 'food',
+        title: place.name,
+        placeName: place.name,
+        startTime: input.startTime || undefined,
+        location: place.location,
+        note: noteParts.length ? noteParts.join('\n') : undefined,
+        alert: place.needsReservation ? '此餐廳需訂位,請先確認訂位狀況' : undefined,
+        placeId: place.id,
+        status: 'scheduled',
+        isFavorite: false,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      };
+
+      let insertAt = siblings.length;
+      if (input.afterEventId) {
+        const idx = siblings.findIndex((e) => e.id === input.afterEventId);
+        if (idx >= 0) insertAt = idx + 1;
+      }
+      const list = [...siblings];
+      list.splice(insertAt, 0, newEvent);
+      await db.events.add(newEvent);
+      await Promise.all(
+        list.map((e, i) => db.events.update(e.id, { order: i + 1, updatedAt: Date.now() })),
+      );
+      await db.places.update(place.id, { status: 'scheduled', updatedAt: Date.now() });
+    });
   },
 };

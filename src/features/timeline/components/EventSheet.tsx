@@ -60,7 +60,25 @@ export function EventSheet({ event, days, dayEvents = [], onClose }: Props) {
     };
     const empty = !cleaned.line && !cleaned.from && !cleaned.to &&
       !cleaned.durationMin && !cleaned.distanceKm && !cleaned.farePerAdult;
-    await eventRepository.updateTransit(event.id, empty ? undefined : cleaned);
+
+    if (event.type === 'transport') {
+      // transport cards edit their own transit info
+      await eventRepository.updateTransit(event.id, empty ? undefined : cleaned);
+    } else {
+      // other cards spawn a standalone transport card right before them
+      if (empty) {
+        onClose();
+        return;
+      }
+      const toLabel = cleaned.to ?? event.placeName ?? event.title;
+      await eventRepository.insertTransportBefore({
+        tripId: event.tripId,
+        dayId: event.dayId,
+        beforeEventId: event.id,
+        title: `前往 ${toLabel}`,
+        transit: cleaned,
+      });
+    }
     onClose();
   };
 
@@ -140,9 +158,26 @@ export function EventSheet({ event, days, dayEvents = [], onClose }: Props) {
                 🚏 導航此段(A→B)
               </a>
             )}
-            <button className={actionBtn} onClick={() => setView('transit')}>
-              🚃 編輯交通資訊
-            </button>
+            {event.type === 'transport' ? (
+              <button className={actionBtn} onClick={() => setView('transit')}>
+                🚃 編輯交通資訊
+              </button>
+            ) : (
+              <button
+                className={actionBtn}
+                onClick={() => {
+                  // prefill: previous stop → this place
+                  setTransit((t) => ({
+                    ...t,
+                    from: t.from ?? (prevEvent ? labelOf(prevEvent) : undefined),
+                    to: t.to ?? (event.placeName ?? event.title),
+                  }));
+                  setView('transit');
+                }}
+              >
+                🚃 插入交通卡(前往此地)
+              </button>
+            )}
           </div>
 
           <div>
@@ -274,7 +309,7 @@ export function EventSheet({ event, days, dayEvents = [], onClose }: Props) {
             className="rounded-xl bg-primary py-3 text-sm font-bold text-primary-ink active:opacity-80"
             onClick={saveTransit}
           >
-            儲存交通資訊
+            {event.type === 'transport' ? '儲存交通資訊' : '＋ 插入獨立交通卡'}
           </button>
           <button className="text-sm text-ink-3" onClick={() => setView('actions')}>‹ 返回</button>
         </div>
