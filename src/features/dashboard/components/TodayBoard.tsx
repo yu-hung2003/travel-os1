@@ -7,6 +7,7 @@ import { typeMeta } from '@/features/timeline/eventMeta';
 import { ProgressRing } from '@/features/dashboard/components/ProgressRing';
 import { gmapsDirectionsUrl } from '@/shared/utils/maps';
 import { WeatherCard } from '@/features/dashboard/components/WeatherCard';
+import { SmartSuggestions } from '@/features/dashboard/components/SmartSuggestions';
 import type { TimelineEvent, Trip, TripDay } from '@/domain/types';
 
 const WEEKDAY = ['日', '一', '二', '三', '四', '五', '六'];
@@ -142,6 +143,9 @@ export function TodayBoard({ trip, day, now, preview = false }: Props) {
           </div>
         )
       )}
+
+      {/* smart suggestions (Phase 9 rule engine) */}
+      <SmartSuggestions day={day} events={events} nowMins={nowMins} preview={preview} />
 
       {/* spend + weather row */}
       <div className="grid grid-cols-2 gap-3">

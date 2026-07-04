@@ -19,6 +19,8 @@ export default {
         warning: 'rgb(var(--c-warning) / <alpha-value>)',
         danger: 'rgb(var(--c-danger) / <alpha-value>)',
         line: 'rgb(var(--c-line) / <alpha-value>)',
+        transit: 'rgb(var(--c-transit) / <alpha-value>)',
+        'transit-line': 'rgb(var(--c-transit-line) / <alpha-value>)',
       },
       borderRadius: { card: '1.25rem' },
       boxShadow: { card: '0 1px 2px rgb(0 0 0 / 0.06), 0 4px 16px rgb(0 0 0 / 0.05)' },

@@ -21,6 +21,8 @@
   --c-warning: 217 119 6;
   --c-danger: 220 38 38;
   --c-line: 226 232 236;
+  --c-transit: 250 244 229;      /* soft beige card bg */
+  --c-transit-line: 233 221 194;
   color-scheme: light;
 }
 [data-theme='dark'] {
@@ -37,6 +39,8 @@
   --c-warning: 251 191 36;
   --c-danger: 248 113 113;
   --c-line: 40 53 72;
+  --c-transit: 45 40 30;         /* warm dark equivalent */
+  --c-transit-line: 74 64 44;
   color-scheme: dark;
 }
 

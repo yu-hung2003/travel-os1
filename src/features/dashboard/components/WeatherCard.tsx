@@ -7,19 +7,27 @@ import type { GeoPoint, TripDay } from '@/domain/types';
 
 const FALLBACK_OSAKA: GeoPoint = { lat: 34.6937, lng: 135.5023 };
 
+interface WeatherPoint {
+  point: GeoPoint;
+  /** human-readable source of the coordinates, shown on the card */
+  label: string;
+}
+
 /**
  * Resolve "today's" weather point generically:
- * first located event of the day → later days' first located event →
- * accommodation location → Osaka fallback.
+ * first located event of the day → accommodation → later days' first located
+ * event → Osaka fallback. Always returns a label naming the location.
  */
-async function resolvePoint(day: TripDay): Promise<GeoPoint> {
+async function resolvePoint(day: TripDay): Promise<WeatherPoint> {
   const dayEvents = await db.events.where('dayId').equals(day.id).sortBy('order');
   const located = dayEvents.find((e) => e.location);
-  if (located?.location) return located.location;
+  if (located?.location) {
+    return { point: located.location, label: located.placeName ?? located.title };
+  }
 
   if (day.accommodationId) {
     const acc = await db.accommodations.get(day.accommodationId);
-    if (acc?.location) return acc.location;
+    if (acc?.location) return { point: acc.location, label: acc.name };
   }
 
   const laterDays = await db.days
@@ -29,13 +37,20 @@ async function resolvePoint(day: TripDay): Promise<GeoPoint> {
   for (const d of laterDays) {
     const evs = await db.events.where('dayId').equals(d.id).sortBy('order');
     const hit = evs.find((e) => e.location);
-    if (hit?.location) return hit.location;
+    if (hit?.location) {
+      return { point: hit.location, label: hit.placeName ?? hit.title };
+    }
   }
-  return FALLBACK_OSAKA;
+  return { point: FALLBACK_OSAKA, label: '大阪' };
+}
+
+function msnWeatherUrl(p: GeoPoint): string {
+  return `https://www.msn.com/zh-tw/weather/forecast?lat=${p.lat}&lon=${p.lng}&weadegreetype=C`;
 }
 
 export function WeatherCard({ day }: { day: TripDay }) {
-  const point = useLiveQuery(() => resolvePoint(day), [day.id]);
+  const resolved = useLiveQuery(() => resolvePoint(day), [day.id]);
+  const point = resolved?.point;
   const [snap, setSnap] = useState<WeatherSnapshot | null | 'loading'>('loading');
 
   useEffect(() => {
@@ -54,8 +69,15 @@ export function WeatherCard({ day }: { day: TripDay }) {
   const rain = snap !== 'loading' && snap !== null && snap.pop >= 0.6;
 
   return (
-    <div className="card p-4">
-      <p className="text-xs font-semibold text-ink-2">今日天氣</p>
+    <a
+      href={point ? msnWeatherUrl(point) : undefined}
+      target="_blank"
+      rel="noreferrer"
+      className="card block p-4 active:opacity-80"
+    >
+      <p className="truncate text-xs font-semibold text-ink-2">
+        今日天氣{resolved ? ` · ${resolved.label}` : ''}
+      </p>
       {snap === 'loading' ? (
         <p className="mt-1.5 text-xl font-bold text-ink-3">…</p>
       ) : snap === null ? (
@@ -87,8 +109,9 @@ export function WeatherCard({ day }: { day: TripDay }) {
               離線快取 · {format(snap.fetchedAt, 'HH:mm')} 更新
             </p>
           )}
+          <p className="mt-1 text-[10px] text-ink-3">點看 MSN 完整預報 →</p>
         </>
       )}
-    </div>
+    </a>
   );
 }

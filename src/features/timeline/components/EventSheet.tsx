@@ -9,10 +9,12 @@ import type { TransitInfo } from '@/domain/types';
 interface Props {
   event: TimelineEvent | null;
   days: TripDay[];
+  /** the selected day's events in display order — used for 上一站/下一站 auto-fill */
+  dayEvents?: TimelineEvent[];
   onClose: () => void;
 }
 
-export function EventSheet({ event, days, onClose }: Props) {
+export function EventSheet({ event, days, dayEvents = [], onClose }: Props) {
   const [note, setNote] = useState('');
   const [view, setView] = useState<'actions' | 'move' | 'confirmDelete' | 'transit'>('actions');
   const [transit, setTransit] = useState<TransitInfo>({ mode: 'train' });
@@ -61,6 +63,11 @@ export function EventSheet({ event, days, onClose }: Props) {
     await eventRepository.updateTransit(event.id, empty ? undefined : cleaned);
     onClose();
   };
+
+  const idx = dayEvents.findIndex((e) => e.id === event.id);
+  const prevEvent = idx > 0 ? dayEvents[idx - 1] : undefined;
+  const nextEvent = idx >= 0 && idx < dayEvents.length - 1 ? dayEvents[idx + 1] : undefined;
+  const labelOf = (e: TimelineEvent) => e.transit?.to ?? e.placeName ?? e.title;
 
   const navDestination = event.location ?? event.transit?.to ?? event.placeName ?? event.title;
   const navMode =
@@ -205,6 +212,27 @@ export function EventSheet({ event, days, onClose }: Props) {
               </button>
             ))}
           </div>
+          {(prevEvent || nextEvent) && (
+            <div className="flex flex-col gap-1.5">
+              {prevEvent && (
+                <button
+                  onClick={() => setTransit({ ...transit, from: labelOf(prevEvent) })}
+                  className="rounded-xl bg-surface-3 px-3 py-2 text-left text-xs font-semibold text-ink-2 active:opacity-70"
+                >
+                  ⬆️ 出發地帶入上一站:{labelOf(prevEvent)}
+                </button>
+              )}
+              {nextEvent && (
+                <button
+                  onClick={() => setTransit({ ...transit, to: nextEvent.placeName ?? nextEvent.title })}
+                  className="rounded-xl bg-surface-3 px-3 py-2 text-left text-xs font-semibold text-ink-2 active:opacity-70"
+                >
+                  ⬇️ 目的地帶入下一站:{nextEvent.placeName ?? nextEvent.title}
+                </button>
+              )}
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-semibold text-ink-2">出發地</label>

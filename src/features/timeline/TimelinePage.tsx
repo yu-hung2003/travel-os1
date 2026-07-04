@@ -166,7 +166,7 @@ export default function TimelinePage() {
         ＋ 新增事件
       </button>
 
-      <EventSheet event={openEvent} days={days} onClose={() => setOpenEvent(null)} />
+      <EventSheet event={openEvent} days={days} dayEvents={orderedEvents} onClose={() => setOpenEvent(null)} />
       <AddEventSheet
         open={adding}
         tripId={trip.id}

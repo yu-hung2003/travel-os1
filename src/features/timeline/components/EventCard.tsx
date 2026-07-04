@@ -3,6 +3,10 @@ import { CSS } from '@dnd-kit/utilities';
 import type { TimelineEvent } from '@/domain/types';
 import { statusMeta, typeMeta } from '@/features/timeline/eventMeta';
 
+const transitModeEmoji: Record<string, string> = {
+  walk: '🚶', bus: '🚌', train: '🚃', subway: '🚇', taxi: '🚕', boat: '⛴️', flight: '✈️',
+};
+
 interface Props {
   event: TimelineEvent;
   onOpen: (event: TimelineEvent) => void;
@@ -15,12 +19,16 @@ export function EventCard({ event, onOpen }: Props) {
   const dimmed = event.status === 'skipped' || event.status === 'postponed';
   const meta = typeMeta[event.type];
   const status = statusMeta[event.status];
+  // transport events, or any event that has transit info, render as a beige transit card
+  const isTransit = event.type === 'transport' || !!event.transit;
 
   return (
     <li
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
-      className={`card flex items-stretch overflow-hidden ${isDragging ? 'z-10 opacity-90 shadow-lg' : ''}`}
+      className={`flex items-stretch overflow-hidden rounded-card border shadow-card ${
+        isTransit ? 'bg-transit border-transit-line/80' : 'bg-surface-2 border-line/60'
+      } ${isDragging ? 'z-10 opacity-90 shadow-lg' : ''}`}
     >
       {/* main tappable area */}
       <button
@@ -52,14 +60,26 @@ export function EventCard({ event, onOpen }: Props) {
           >
             {event.title}
           </span>
-          {event.transit && (event.transit.line || event.transit.durationMin || event.transit.farePerAdult) && (
-            <span className="mt-0.5 block text-xs text-ink-3">
-              {[
-                event.transit.line,
-                event.transit.durationMin ? `${event.transit.durationMin}分` : undefined,
-                event.transit.distanceKm ? `${event.transit.distanceKm}km` : undefined,
-                event.transit.farePerAdult ? `¥${event.transit.farePerAdult.toLocaleString()}/大人` : undefined,
-              ].filter(Boolean).join(' · ')}
+          {event.transit && (
+            <span className="mt-1.5 block rounded-lg border border-transit-line/70 bg-surface-2/50 px-2.5 py-1.5">
+              {(event.transit.from || event.transit.to) && (
+                <span className="block text-xs font-bold">
+                  {transitModeEmoji[event.transit.mode] ?? '🚃'}{' '}
+                  {event.transit.from ?? '—'} → {event.transit.to ?? '—'}
+                </span>
+              )}
+              <span className={`block text-xs text-ink-2 ${event.transit.from || event.transit.to ? 'mt-0.5' : ''}`}>
+                {!event.transit.from && !event.transit.to && (
+                  <>{transitModeEmoji[event.transit.mode] ?? '🚃'} </>
+                )}
+                {[
+                  event.transit.line,
+                  event.transit.durationMin ? `${event.transit.durationMin}分` : undefined,
+                  event.transit.distanceKm ? `${event.transit.distanceKm}km` : undefined,
+                  event.transit.farePerAdult ? `¥${event.transit.farePerAdult.toLocaleString()}/大人` : undefined,
+                  event.transit.fareNote,
+                ].filter(Boolean).join(' · ')}
+              </span>
             </span>
           )}
           {event.alert && event.status === 'scheduled' && (
