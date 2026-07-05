@@ -43,10 +43,12 @@ export const kyotoOsakaAccommodations: Accommodation[] = [
   {
     id: 'ko26-acc-kyoto',
     tripId: TRIP_ID,
-    name: '京都四條/河原町周邊飯店',
+    name: '京都五條假日酒店(Holiday Inn Kyoto Gojo)',
+    address: '179 Higashikazariyacho, Shimogyo Ward, Kyoto 600-8107',
+    location: { lat: 34.9967, lng: 135.7589 },
     checkInDate: '2026-08-08',
     checkOutDate: '2026-08-10',
-    note: '共 2 晚。近河原町商圈,步行 5-15 分鐘。',
+    note: '共 2 晚。近地下鐵五條站;座標為約略位置,可於地圖確認微調。',
   },
   {
     id: 'ko26-acc-osaka',
@@ -98,24 +100,50 @@ const seedDays: SeedDay[] = [
       },
       {
         type: 'transport',
-        title: 'JR 特急 HARUKA → 京都車站',
-        startTime: '13:00', endTime: '14:20',
-        transit: { mode: 'train', line: 'JR 特急 HARUKA', from: '關西機場', to: '京都車站', durationMin: 80 },
-        alert: '需提前於 Klook 或 KKday 購買電子車票,現場換實體票。',
+        title: '機場利木津巴士 → 京都車站八條口',
+        startTime: '13:10', endTime: '14:40',
+        transit: {
+          mode: 'bus',
+          line: '關西機場利木津巴士(關西空港交通/京阪巴士/JR西日本巴士聯營)',
+          from: '關西機場 T1', to: '京都車站八條口',
+          station: '第一航廈1樓 8號巴士站牌(T2為2號站牌)',
+          durationMin: 90,
+          farePerAdult: 2600, fareNote: '兒童(小學生)¥1,300',
+        },
+        note: '大行李交給隨車服務人員並領取行李兌換牌,上車一路睡到京都,免推行李轉車。行經高速公路,連假尖峰可能稍有延遲。',
+        alert: '建議先於站牌旁自動售票機購買實體票,或提前網路購買電子券(亦可直接刷 ICOCA 上車)。',
+      },
+      {
+        type: 'transport',
+        title: '計程車 八條口 → 飯店',
+        startTime: '14:45', endTime: '15:00',
+        transit: {
+          mode: 'taxi',
+          from: '京都車站八條口', to: '京都五條假日酒店',
+          station: '八條口計程車搭乘處',
+          durationMin: 10,
+          farePerAdult: 1500, fareNote: '總價約 ¥1,200-1,800,三位大人分攤划算',
+        },
+        note: '全家完全不需拉行李擠地鐵或公車。',
       },
       {
         type: 'hotel',
-        title: '京都飯店 Check-in・置放行李',
-        startTime: '14:20', endTime: '15:30',
-        placeName: '京都四條/河原町周邊飯店',
-        note: '🚖 四大一小推大行李,建議京都車站直接搭計程車前往飯店(約 ¥1,000-1,500),免去搬行李擠地鐵。',
+        title: '京都五條假日酒店 Check-in・置放行李',
+        startTime: '15:00', endTime: '15:30',
+        placeName: '京都五條假日酒店(Holiday Inn Kyoto Gojo)',
+        location: { lat: 34.9967, lng: 135.7589 },
+      },
+      {
+        type: 'transport',
+        title: '步行前往河原町商圈',
+        startTime: '15:40', endTime: '16:00',
+        transit: { mode: 'walk', from: '飯店(五條)', to: '河原町商圈', walkMin: 20, farePerAdult: 0 },
       },
       {
         type: 'shopping',
         title: '河原町商圈:Loft 京都店 + Uniqlo 關西旗艦店',
         startTime: '16:00', endTime: '18:30',
         placeName: 'MINA 京都(Loft B1-4F・Uniqlo 5-6F)',
-        transit: { mode: 'walk', from: '飯店', to: '河原町商圈', durationMin: 15 },
         note: '吹冷氣購物,同一棟解決。',
       },
       {
@@ -134,11 +162,11 @@ const seedDays: SeedDay[] = [
     events: [
       {
         type: 'transport',
-        title: '地下鐵四條 → 京都站 → JR 奈良線至宇治',
+        title: '地下鐵五條 → 京都站 → JR 奈良線至宇治',
         startTime: '08:30', endTime: '09:10',
         transit: {
-          mode: 'train', line: '地下鐵(¥220)+ JR 奈良線 區間快速(¥240)',
-          from: '四條站', to: '宇治站', durationMin: 40, farePerAdult: 460, fareNote: '兒童半價',
+          mode: 'train', line: '地下鐵烏丸線(¥220)+ JR 奈良線 區間快速(¥240)',
+          from: '五條站', to: '宇治站', durationMin: 40, farePerAdult: 460, fareNote: '兒童半價',
         },
       },
       {
@@ -333,11 +361,16 @@ const seedDays: SeedDay[] = [
     accommodationId: 'ko26-acc-osaka',
     events: [
       {
+        type: 'transport',
+        title: '步行前往木津卸売市場',
+        startTime: '08:00', endTime: '08:12',
+        transit: { mode: 'walk', from: '飯店', to: '木津卸売市場', walkMin: 12, farePerAdult: 0 },
+      },
+      {
         type: 'food',
         title: '早餐:木津 魚市食堂 海鮮丼',
         startTime: '08:15', endTime: '10:00',
         placeName: '木津卸売市場',
-        transit: { mode: 'walk', from: '飯店', to: '木津卸売市場', durationMin: 12, farePerAdult: 0 },
         note: '新鮮度爆表的極品海鮮丼。',
         alert: '8/13(四)市場有營業(已避開週日與週三公休)。魚市食堂不可預約且每日限量,務必提早現場排隊!',
       },

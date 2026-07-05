@@ -21,6 +21,7 @@ const SYNC_TABLES = [
 type SyncTable = (typeof SYNC_TABLES)[number];
 
 const CODE_KEY = 'travelos-sync-code';
+const LAST_RX_KEY = 'travelos-sync-last-rx';
 const CLIENT_KEY = 'travelos-client-id';
 
 function clientId(): string {
@@ -95,6 +96,9 @@ function startListener(code: string): void {
   const fs = getFirestoreDb();
   unsubscribe?.();
   unsubscribe = onSnapshot(collection(fs, 'rooms', code, 'records'), (snap) => {
+    if (!snap.metadata.fromCache) {
+      localStorage.setItem(LAST_RX_KEY, String(Date.now()));
+    }
     const changes = snap.docChanges().filter((c) => c.type !== 'removed');
     if (changes.length === 0) return;
     void (async () => {
@@ -198,4 +202,9 @@ export function resumeSyncIfEnabled(): void {
   } catch (e) {
     console.warn('[sync] resume failed', e);
   }
+}
+
+export function getLastReceivedAt(): number | null {
+  const v = localStorage.getItem(LAST_RX_KEY);
+  return v ? Number(v) : null;
 }

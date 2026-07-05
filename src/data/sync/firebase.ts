@@ -32,6 +32,9 @@ export function getFirestoreDb(): Firestore {
     app = initializeApp(config);
     firestore = initializeFirestore(app, {
       localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+      // Safari / iOS PWA often blocks Firestore's WebChannel; without this,
+      // initial fetches work but realtime updates never arrive (one-way sync).
+      experimentalAutoDetectLongPolling: true,
     });
   }
   return firestore!;

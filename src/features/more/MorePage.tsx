@@ -3,6 +3,7 @@ import type { ThemePref } from '@/domain/types';
 import { InstallCard } from '@/features/more/components/InstallCard';
 import { CurrencyConverter } from '@/shared/components/CurrencyConverter';
 import { FamilySyncCard } from '@/features/more/components/FamilySyncCard';
+import { ReimportCard } from '@/features/more/components/ReimportCard';
 import { Link } from 'react-router-dom';
 
 const options: { value: ThemePref; label: string }[] = [
@@ -21,6 +22,9 @@ export default function MorePage() {
       <InstallCard />
 
       <FamilySyncCard />
+
+      <ReimportCard />
+
 
       <CurrencyConverter />
 

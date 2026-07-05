@@ -16,6 +16,7 @@ interface Props {
 
 export function EventSheet({ event, days, dayEvents = [], onClose }: Props) {
   const [note, setNote] = useState('');
+  const [alertText, setAlertText] = useState('');
   const [view, setView] = useState<'actions' | 'move' | 'confirmDelete' | 'transit' | 'timing' | 'info'>('actions');
   const [ticketText, setTicketText] = useState('');
   const [needsBooking, setNeedsBooking] = useState<boolean | undefined>(undefined);
@@ -29,6 +30,7 @@ export function EventSheet({ event, days, dayEvents = [], onClose }: Props) {
 
   useEffect(() => {
     setNote(event?.note ?? '');
+    setAlertText(event?.alert ?? '');
     setTransit(event?.transit ? { ...event.transit } : { mode: 'train' });
     setDurText(event?.durationMin ? String(event.durationMin) : '');
     setOpenUntil(event?.openUntil ?? '');
@@ -50,6 +52,7 @@ export function EventSheet({ event, days, dayEvents = [], onClose }: Props) {
 
   const saveNote = async () => {
     await eventRepository.updateNote(event.id, note);
+    await eventRepository.updateAlert(event.id, alertText);
     onClose();
   };
 
@@ -236,11 +239,22 @@ export function EventSheet({ event, days, dayEvents = [], onClose }: Props) {
               placeholder="寫下提醒、心得、想吃的東西…"
               className="mt-1 w-full rounded-xl border border-line bg-surface p-3 text-sm outline-none focus:border-primary"
             />
+            <label className="mt-2 block text-xs font-semibold text-warning" htmlFor="event-alert">
+              ⚠️ 警語(顯示於卡片與首頁今日提醒,可留空)
+            </label>
+            <textarea
+              id="event-alert"
+              value={alertText}
+              onChange={(e) => setAlertText(e.target.value)}
+              rows={2}
+              placeholder="例如:需提前 1-2 週訂位 / 末班入場 18:00"
+              className="mt-1 w-full rounded-xl border border-warning/40 bg-surface p-3 text-sm outline-none focus:border-warning"
+            />
             <button
               className="mt-1 w-full rounded-xl bg-primary py-3 text-sm font-bold text-primary-ink active:opacity-80"
               onClick={saveNote}
             >
-              儲存備註
+              儲存備註與警語
             </button>
           </div>
 

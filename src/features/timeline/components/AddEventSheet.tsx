@@ -15,11 +15,13 @@ export function AddEventSheet({ open, tripId, dayId, onClose }: Props) {
   const [type, setType] = useState<EventType>('sight');
   const [title, setTitle] = useState('');
   const [durText, setDurText] = useState('');
+  const [alertText, setAlertText] = useState('');
 
   const reset = () => {
     setType('sight');
     setTitle('');
     setDurText('');
+    setAlertText('');
   };
 
   const submit = async () => {
@@ -28,6 +30,7 @@ export function AddEventSheet({ open, tripId, dayId, onClose }: Props) {
     await eventRepository.addEvent({
       tripId, dayId, type, title,
       durationMin: Number.isFinite(dur) && dur > 0 ? Math.round(dur) : undefined,
+      alert: alertText.trim() || undefined,
     });
     reset();
     onClose();
@@ -91,6 +94,19 @@ export function AddEventSheet({ open, tripId, dayId, onClose }: Props) {
               </button>
             ))}
           </div>
+        </div>
+
+        <div>
+          <label className="text-xs font-semibold text-warning" htmlFor="new-alert">
+            ⚠️ 警語(可留空)
+          </label>
+          <input
+            id="new-alert"
+            value={alertText}
+            onChange={(e) => setAlertText(e.target.value)}
+            placeholder="例如:需預約 / 週三公休"
+            className="mt-1 w-full rounded-xl border border-warning/40 bg-surface p-3 text-sm outline-none focus:border-warning"
+          />
         </div>
 
         <button

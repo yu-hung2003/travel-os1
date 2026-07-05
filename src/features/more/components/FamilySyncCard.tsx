@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { format } from 'date-fns';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/data/db';
 import { tripRepository } from '@/data/repositories/tripRepository';
 import {
-  createRoom, getSyncCode, joinRoom, leaveSync,
+  createRoom, getSyncCode, joinRoom, leaveSync, getLastReceivedAt,
 } from '@/data/sync/familySync';
 import { isFirebaseConfigured } from '@/data/sync/firebase';
 import { BottomSheet } from '@/shared/components/BottomSheet';
@@ -15,6 +16,12 @@ export function FamilySyncCard() {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [lastRx, setLastRx] = useState<number | null>(getLastReceivedAt());
+
+  useEffect(() => {
+    const t = setInterval(() => setLastRx(getLastReceivedAt()), 5000);
+    return () => clearInterval(t);
+  }, []);
 
   const trip = useLiveQuery(async () => {
     const pref = await db.prefs.get('default');
@@ -98,8 +105,13 @@ export function FamilySyncCard() {
               {copied ? '✅ 已複製' : '點擊複製'}
             </span>
           </button>
+          <p className="mt-2 text-[11px] tabular-nums text-ink-3">
+            {lastRx
+              ? `🟢 連線正常 · 最後收到同步 ${format(lastRx, 'HH:mm:ss')}`
+              : '🟡 尚未收到伺服器回應,請確認網路'}
+          </p>
           <button
-            className="mt-2 text-xs font-semibold text-danger active:opacity-70"
+            className="mt-1 text-xs font-semibold text-danger active:opacity-70"
             onClick={() => setSheet('leave')}
           >
             此裝置停止同步

@@ -75,6 +75,10 @@ export const eventRepository = {
     await db.events.update(eventId, { note: note.trim() || undefined, updatedAt: Date.now() });
   },
 
+  async updateAlert(eventId: string, alert: string): Promise<void> {
+    await db.events.update(eventId, { alert: alert.trim() || undefined, updatedAt: Date.now() });
+  },
+
   async updateDuration(eventId: string, durationMin: number | undefined): Promise<void> {
     await db.events.update(eventId, { durationMin, updatedAt: Date.now() });
   },
@@ -144,6 +148,7 @@ export const eventRepository = {
     title: string;
     durationMin?: number;
     note?: string;
+    alert?: string;
   }): Promise<void> {
     await db.transaction('rw', [db.events, db.days], async () => {
       const day = await db.days.get(input.dayId);
@@ -161,6 +166,7 @@ export const eventRepository = {
         title: input.title.trim(),
         durationMin: input.durationMin,
         note: input.note?.trim() || undefined,
+        alert: input.alert?.trim() || undefined,
         status: 'scheduled',
         isFavorite: false,
         createdAt: Date.now(),
