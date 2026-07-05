@@ -25,7 +25,6 @@ export default function MorePage() {
 
       <ReimportCard />
 
-
       <CurrencyConverter />
 
       <Link to="/places" className="card flex items-center justify-between p-5 active:opacity-80">
