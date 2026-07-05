@@ -58,6 +58,7 @@ export default function PlacesPage() {
   const [locating, setLocating] = useState(false);
   const [geoMsg, setGeoMsg] = useState<string | null>(null);
   const [mealFilter, setMealFilter] = useState<MealType | null>(null);
+  const [sortByDist, setSortByDist] = useState(false);
 
   useEffect(() => {
     if (!trip || editing === null) return;
@@ -102,6 +103,7 @@ export default function PlacesPage() {
         setMyLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
         setLocating(false);
         setGeoMsg(null);
+        setSortByDist(true);
       },
       (err) => {
         setLocating(false);
@@ -144,8 +146,16 @@ export default function PlacesPage() {
   const visiblePlaces = mealFilter
     ? places.filter((p) => p.mealTypes?.includes(mealFilter))
     : places;
+  const sortRows = (rows: Place[]): Place[] => {
+    if (!sortByDist || !myLocation) return rows;
+    return [...rows].sort((a, b) => {
+      const da = a.location ? distanceKm(myLocation, a.location) : Infinity;
+      const db2 = b.location ? distanceKm(myLocation, b.location) : Infinity;
+      return da - db2;
+    });
+  };
   const groups = statusOrder
-    .map((st) => ({ st, rows: visiblePlaces.filter((p) => p.status === st) }))
+    .map((st) => ({ st, rows: sortRows(visiblePlaces.filter((p) => p.status === st)) }))
     .filter((g) => g.rows.length > 0);
 
   return (
@@ -196,6 +206,15 @@ export default function PlacesPage() {
                 {mealMeta[m].emoji} {mealMeta[m].label}
               </button>
             ))}
+            <button
+              onClick={() => setSortByDist(!sortByDist)}
+              disabled={!myLocation}
+              className={`rounded-full px-3 py-1.5 text-xs font-semibold disabled:opacity-40 ${
+                sortByDist && myLocation ? 'bg-accent text-white' : 'bg-surface-2 border border-line/60 text-ink-2'
+              }`}
+            >
+              📍 依距離排序
+            </button>
           </div>
         </div>
       )}

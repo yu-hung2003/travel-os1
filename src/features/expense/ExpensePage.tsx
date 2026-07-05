@@ -38,6 +38,44 @@ export default function ExpensePage() {
   const [editingBudget, setEditingBudget] = useState(false);
   const [editingMembers, setEditingMembers] = useState(false);
   const rate = useJpyTwd();
+
+  const exportCsv = () => {
+    if (!trip || !expenses) return;
+    const esc = (v: string) => `"${v.replace(/"/g, '""')}"`;
+    const header = ['日期', 'Day', '分類', '金額(JPY)', '約台幣(TWD)', '成員', '備註', '記錄時間'];
+    const rows = expenses.map((e) => {
+      const day = e.dayId ? dayById.get(e.dayId) : undefined;
+      const members =
+        e.memberIds && e.memberIds.length > 0
+          ? e.memberIds
+              .map((id) => trip.travelers.find((t) => t.id === id)?.name)
+              .filter(Boolean)
+              .join('、')
+          : '共同';
+      return [
+        day?.date ?? '',
+        day ? `Day ${day.dayIndex}` : '未指定',
+        categoryMeta[e.category].label,
+        String(e.amount),
+        rate ? String(Math.round(e.amount * rate.rate)) : '',
+        members,
+        e.note ?? '',
+        format(e.timestamp, 'yyyy-MM-dd HH:mm'),
+      ].map(esc).join(',');
+    });
+    const total = expenses.reduce((s2, e) => s2 + e.amount, 0);
+    rows.push(['', '', '合計', String(total), rate ? String(Math.round(total * rate.rate)) : '', '', '', '']
+      .map(esc).join(','));
+    // BOM so Excel opens Chinese correctly
+    const csv = '\ufeff' + [header.map(esc).join(','), ...rows].join('\r\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `travel-os-記帳-${format(Date.now(), 'yyyyMMdd')}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
   // member filter: null = include everyone (no filtering)
   const [selectedMemberIds, setSelectedMemberIds] = useState<string[] | null>(null);
 
@@ -106,6 +144,9 @@ export default function ExpensePage() {
       <header className="flex items-baseline justify-between">
         <h1 className="text-2xl font-bold">花費</h1>
         <div className="flex gap-4">
+          <button className="text-sm font-semibold text-primary" onClick={exportCsv}>
+            匯出
+          </button>
           <button className="text-sm font-semibold text-primary" onClick={() => setEditingMembers(true)}>
             成員
           </button>

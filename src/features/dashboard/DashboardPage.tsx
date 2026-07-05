@@ -5,6 +5,7 @@ import { db } from '@/data/db';
 import { tripRepository } from '@/data/repositories/tripRepository';
 import { useNow } from '@/features/dashboard/useNow';
 import { TodayBoard } from '@/features/dashboard/components/TodayBoard';
+import { PackingReminderCard } from '@/features/dashboard/components/PackingReminderCard';
 import type { Trip } from '@/domain/types';
 
 function useActiveTrip(): Trip | undefined {
@@ -48,6 +49,9 @@ export default function DashboardPage() {
       {/* before the trip: countdown + preview */}
       {beforeTrip && (
         <>
+          {differenceInCalendarDays(parseISO(trip.startDate), parseISO(todayIso)) <= 3 && (
+            <PackingReminderCard trip={trip} />
+          )}
           <section className="card p-5">
             <p className="text-xs font-semibold text-primary">{trip.coverEmoji} {trip.title}</p>
             <p className="mt-2 text-3xl font-bold tabular-nums">
