@@ -2,6 +2,7 @@ import { useTheme } from '@/shared/hooks/useTheme';
 import type { ThemePref } from '@/domain/types';
 import { InstallCard } from '@/features/more/components/InstallCard';
 import { CurrencyConverter } from '@/shared/components/CurrencyConverter';
+import { FamilySyncCard } from '@/features/more/components/FamilySyncCard';
 import { Link } from 'react-router-dom';
 
 const options: { value: ThemePref; label: string }[] = [
@@ -18,6 +19,8 @@ export default function MorePage() {
       <h1 className="text-2xl font-bold">更多</h1>
 
       <InstallCard />
+
+      <FamilySyncCard />
 
       <CurrencyConverter />
 
