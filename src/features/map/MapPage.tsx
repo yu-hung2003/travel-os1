@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { MapContainer, Marker, Popup, TileLayer, useMap } from 'react-leaflet';
 import L from 'leaflet';
@@ -17,6 +17,15 @@ interface Pin {
   emoji: string;
   title: string;
   subtitle?: string;
+}
+
+interface InventoryRow {
+  id: string;
+  emoji: string;
+  title: string;
+  subtitle: string;
+  hasCoords: boolean;
+  hint: string; // how to add coords when missing
 }
 
 function emojiIcon(emoji: string): L.DivIcon {
@@ -57,8 +66,10 @@ export default function MapPage() {
     return (await tripRepository.listTrips())[0];
   });
 
-  const pins = useLiveQuery(async () => {
-    if (!trip) return [];
+  const [showList, setShowList] = useState(false);
+
+  const data = useLiveQuery(async () => {
+    if (!trip) return { pins: [] as Pin[], inventory: [] as InventoryRow[] };
     const [allEvents, days, accommodations, places] = await Promise.all([
       tripRepository.listTripEvents(trip.id),
       tripRepository.listDays(trip.id),
@@ -74,34 +85,69 @@ export default function MapPage() {
     });
 
     const out: Pin[] = [];
+    const inventory: InventoryRow[] = [];
+
     for (const e of events) {
-      if (!e.location) continue;
-      out.push({
+      // transport cards are routes, not point places — skip in inventory
+      if (e.type === 'transport') continue;
+      const subtitle = `Day ${dayIndex.get(e.dayId) ?? '?'}${e.startTime ? ` · ${e.startTime}` : ''}`;
+      inventory.push({
         id: `ev-${e.id}`,
-        point: e.location,
         emoji: typeMeta[e.type].emoji,
         title: e.title,
-        subtitle: `Day ${dayIndex.get(e.dayId) ?? '?'}${e.startTime ? ` · ${e.startTime}` : ''}`,
+        subtitle,
+        hasCoords: !!e.location,
+        hint: '行程頁點此事件 → ℹ️ 景點/店家資訊 → 填入座標',
       });
+      if (e.location) {
+        out.push({
+          id: `ev-${e.id}`,
+          point: e.location,
+          emoji: typeMeta[e.type].emoji,
+          title: e.title,
+          subtitle,
+        });
+      }
     }
     for (const a of accommodations) {
-      if (!a.location) continue;
-      out.push({ id: `acc-${a.id}`, point: a.location, emoji: '🏨', title: a.name, subtitle: '住宿' });
+      inventory.push({
+        id: `acc-${a.id}`,
+        emoji: '🏨',
+        title: a.name,
+        subtitle: '住宿',
+        hasCoords: !!a.location,
+        hint: '住宿座標由行程資料提供',
+      });
+      if (a.location) {
+        out.push({ id: `acc-${a.id}`, point: a.location, emoji: '🏨', title: a.name, subtitle: '住宿' });
+      }
     }
     for (const p of places) {
-      if (!p.location) continue;
-      out.push({
+      const emoji = p.kind === 'sight' ? '⛩️' : '🍜';
+      inventory.push({
         id: `pl-${p.id}`,
-        point: p.location,
-        emoji: '🍜',
+        emoji,
         title: p.name,
         subtitle: `口袋名單${p.priceRange ? ` · ${p.priceRange}` : ''}`,
+        hasCoords: !!p.location,
+        hint: '口袋名單點此店家編輯 → 填入座標(可用 GM 連結帶入)',
       });
+      if (p.location) {
+        out.push({
+          id: `pl-${p.id}`,
+          point: p.location,
+          emoji,
+          title: p.name,
+          subtitle: `口袋名單${p.priceRange ? ` · ${p.priceRange}` : ''}`,
+        });
+      }
     }
-    return out;
+    return { pins: out, inventory };
   }, [trip?.id]);
 
-  if (!trip || !pins) return null;
+  if (!trip || !data) return null;
+  const { pins, inventory } = data;
+  const missing = inventory.filter((r) => !r.hasCoords);
 
   return (
     <div className="flex h-full flex-col gap-3 py-5">
@@ -150,6 +196,47 @@ export default function MapPage() {
           ))}
         </MapContainer>
       </div>
+
+      <button
+        onClick={() => setShowList(!showList)}
+        className="rounded-2xl border border-line/60 bg-surface-2 py-3 text-sm font-semibold text-ink-2 active:bg-surface-3"
+      >
+        📋 地點清單({inventory.length})
+        {missing.length > 0 && (
+          <span className="ml-1.5 text-warning">⚠️ {missing.length} 個未設座標</span>
+        )}
+        <span className="ml-1.5 text-ink-3">{showList ? '▲ 收合' : '▼ 展開'}</span>
+      </button>
+
+      {showList && (
+        <section className="card p-4">
+          <p className="text-xs text-ink-3">
+            清單即時包含行程(啟用中版本)、住宿與口袋名單的所有地點;之後新加入的項目會自動出現。
+            未設座標的項目補上座標後即會顯示於地圖。
+          </p>
+          <ul className="mt-2 divide-y divide-line/60">
+            {[...inventory].sort((a, b) => Number(a.hasCoords) - Number(b.hasCoords)).map((r) => (
+              <li key={r.id} className="flex items-start gap-3 py-2.5">
+                <span className="text-lg">{r.emoji}</span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-semibold leading-snug">{r.title}</span>
+                  <span className="block text-xs text-ink-3">{r.subtitle}</span>
+                  {!r.hasCoords && (
+                    <span className="mt-0.5 block text-xs text-warning">補座標:{r.hint}</span>
+                  )}
+                </span>
+                <span
+                  className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                    r.hasCoords ? 'bg-success/15 text-success' : 'bg-warning/15 text-warning'
+                  }`}
+                >
+                  {r.hasCoords ? '✅ 已在地圖' : '⚠️ 未設座標'}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <p className="text-center text-xs text-ink-3">
         行程景點・住宿・口袋名單自動上圖;點 marker 可直接導航

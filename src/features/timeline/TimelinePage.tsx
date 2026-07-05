@@ -169,8 +169,10 @@ export default function TimelinePage() {
         </div>
       )}
 
-      <p className="text-[11px] text-ink-3">
-        💡 點行程卡右側的 🧭 圖示可快速開啟 Google Maps 導航;⠿ 把手可拖曳排序
+      <p className="text-[11px] leading-relaxed text-ink-3">
+        💡 點行程卡右側的 🧭 圖示可快速開啟 Google Maps 導航
+        <br />
+        ⠿ 把手可拖曳排序
       </p>
 
       {/* sortable event list */}

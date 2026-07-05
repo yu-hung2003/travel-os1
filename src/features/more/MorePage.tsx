@@ -18,7 +18,7 @@ type CardId = (typeof CARD_IDS)[number];
 
 const cardLabels: Record<CardId, string> = {
   sync: '👨‍👩‍👧‍👦 家庭同步',
-  places: '🍜 餐廳口袋名單',
+  places: '🍜 餐廳/景點口袋名單',
   packing: '🧳 行李清單',
   converter: '💱 匯率試算',
   theme: '🎨 外觀主題',
@@ -83,8 +83,8 @@ export default function MorePage() {
     places: (
       <Link to="/places" className="card flex items-center justify-between p-5 active:opacity-80">
         <div>
-          <h2 className="text-sm font-bold">🍜 餐廳口袋名單</h2>
-          <p className="mt-0.5 text-xs text-ink-3">備選/選定/去過,訂位、價位、菜單、距離一目瞭然</p>
+          <h2 className="text-sm font-bold">🍜⛩️ 餐廳/景點口袋名單</h2>
+          <p className="mt-0.5 text-xs text-ink-3">想吃想去先收藏:預約、價位、亮點、距離一目瞭然,一鍵排入行程</p>
         </div>
         <span className="text-ink-3">›</span>
       </Link>
