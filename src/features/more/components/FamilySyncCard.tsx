@@ -114,7 +114,7 @@ export function FamilySyncCard() {
             className="mt-1 text-xs font-semibold text-danger active:opacity-70"
             onClick={() => setSheet('leave')}
           >
-            此裝置停止同步
+            點擊停止此裝置同步
           </button>
         </>
       ) : (

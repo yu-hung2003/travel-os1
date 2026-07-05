@@ -152,13 +152,28 @@ export type PlaceStatus = 'candidate' | 'chosen' | 'scheduled' | 'visited';
 
 export type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack';
 
+export type PlaceKind = 'food' | 'sight';
+
+export type SightTag =
+  | 'shrine'      // 神社寺廟
+  | 'nature'      // 自然風景
+  | 'landmark'    // 地標展望
+  | 'museum'      // 博物館美術館
+  | 'themepark'   // 樂園體驗
+  | 'shopping'    // 購物商圈
+  | 'kids';       // 親子友善
+
 /** Restaurant / spot wishlist entry */
 export interface Place {
   id: ID;
   tripId: ID;
   name: string;
-  /** which meals this place suits — multi-select */
+  /** restaurant vs sight; undefined = food (pre-existing records) */
+  kind?: PlaceKind;
+  /** which meals this place suits — multi-select (food) */
   mealTypes?: MealType[];
+  /** sight categories — multi-select (sight) */
+  sightTags?: SightTag[];
   needsReservation?: boolean;
   priceRange?: string;       // e.g. '¥1,000-2,000/人'
   hours?: string;            // e.g. '11:00-21:00,週三休'

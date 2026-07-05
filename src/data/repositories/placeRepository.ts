@@ -25,4 +25,9 @@ export const placeRepository = {
   async remove(id: string): Promise<void> {
     await db.places.delete(id);
   },
+
+  /** restore a just-deleted place (undo) */
+  async restore(place: Place): Promise<void> {
+    await db.places.put(place);
+  },
 };

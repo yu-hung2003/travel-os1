@@ -114,8 +114,6 @@ export default function MorePage() {
         </button>
       </header>
 
-      <InstallCard />
-
       {order.map((id) => (
         <div key={id} className="relative">
           {editing && (
@@ -142,6 +140,8 @@ export default function MorePage() {
           {cards[id]}
         </div>
       ))}
+
+      <InstallCard />
 
       <p className="text-center text-xs text-ink-3">
         Travel OS v1.0 · 排序僅存於此裝置,不會同步

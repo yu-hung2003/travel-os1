@@ -3,7 +3,7 @@ import type { EventStatus, TimelineEvent, TripDay } from '@/domain/types';
 import { eventRepository } from '@/data/repositories/eventRepository';
 import { BottomSheet } from '@/shared/components/BottomSheet';
 import { typeMeta } from '@/features/timeline/eventMeta';
-import { gmapsDirectionsUrl } from '@/shared/utils/maps';
+import { gmapsDirectionsUrl, parseCoords } from '@/shared/utils/maps';
 import type { TransitInfo } from '@/domain/types';
 
 interface Props {
@@ -23,6 +23,7 @@ export function EventSheet({ event, days, dayEvents = [], onClose }: Props) {
   const [hasLockers, setHasLockers] = useState<boolean | undefined>(undefined);
   const [hasToilets, setHasToilets] = useState<boolean | undefined>(undefined);
   const [webUrl, setWebUrl] = useState('');
+  const [coordsText, setCoordsText] = useState('');
   const [durText, setDurText] = useState('');
   const [openUntil, setOpenUntil] = useState('');
   const [lastEntry, setLastEntry] = useState('');
@@ -40,6 +41,7 @@ export function EventSheet({ event, days, dayEvents = [], onClose }: Props) {
     setHasLockers(event?.hasLockers);
     setHasToilets(event?.hasToilets);
     setWebUrl(event?.webUrl ?? '');
+    setCoordsText(event?.location ? `${event.location.lat}, ${event.location.lng}` : '');
     setView('actions');
   }, [event]);
 
@@ -323,6 +325,20 @@ export function EventSheet({ event, days, dayEvents = [], onClose }: Props) {
             </div>
           ))}
 
+          <div>
+            <label className="text-xs font-semibold text-ink-2">
+              座標(選填)— 填了會顯示在地圖並用於精準導航
+            </label>
+            <input
+              className={input}
+              value={coordsText}
+              onChange={(e) => setCoordsText(e.target.value)}
+              placeholder="34.9949, 135.785(Google Maps 長按複製)"
+            />
+            {coordsText.trim() !== '' && !parseCoords(coordsText) && (
+              <p className="mt-1 text-xs text-danger">格式不正確,範例:34.9949, 135.785</p>
+            )}
+          </div>
           <button
             className="rounded-xl bg-primary py-3 text-sm font-bold text-primary-ink active:opacity-80"
             onClick={async () => {
@@ -336,6 +352,7 @@ export function EventSheet({ event, days, dayEvents = [], onClose }: Props) {
                 hasLockers,
                 hasToilets,
                 webUrl: webUrl.trim() || undefined,
+                location: coordsText.trim() ? parseCoords(coordsText) : undefined,
               });
               onClose();
             }}

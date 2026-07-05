@@ -97,6 +97,7 @@ export const eventRepository = {
     hasLockers?: boolean;
     hasToilets?: boolean;
     webUrl?: string;
+    location?: import('@/domain/types').GeoPoint;
   }): Promise<void> {
     await db.events.update(eventId, { ...patch, updatedAt: Date.now() });
   },
@@ -220,7 +221,7 @@ export const eventRepository = {
         dayId: input.dayId,
         versionId,
         order: 0,
-        type: 'food',
+        type: place.kind === 'sight' ? 'sight' : 'food',
         title: place.name,
         placeName: place.name,
         startTime: input.startTime || undefined,

@@ -70,3 +70,14 @@ export function parseGoogleMapsUrl(raw: string): { name?: string; location?: Geo
   if (!name && !location) return undefined;
   return { name, location };
 }
+
+
+/** parse '34.6687, 135.5013' style text into a GeoPoint */
+export function parseCoords(text: string): GeoPoint | undefined {
+  const m = text.trim().match(/^(-?\d+(?:\.\d+)?)[,\s]+(-?\d+(?:\.\d+)?)$/);
+  if (!m) return undefined;
+  const lat = Number(m[1]);
+  const lng = Number(m[2]);
+  if (Math.abs(lat) > 90 || Math.abs(lng) > 180) return undefined;
+  return { lat, lng };
+}
