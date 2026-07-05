@@ -42,6 +42,8 @@ export const packingRepository = {
     name: string;
     qty: number;
     category?: string;
+    ownerId?: string;
+    highlight?: boolean;
   }): Promise<void> {
     await db.packing.add({
       id: newId(),
@@ -51,7 +53,20 @@ export const packingRepository = {
       name: input.name.trim(),
       qty: Math.max(1, Math.round(input.qty)),
       checked: false,
+      ownerId: input.ownerId,
+      highlight: input.highlight || undefined,
     });
+  },
+
+  async toggleHighlight(id: string): Promise<void> {
+    const item = await db.packing.get(id);
+    if (!item) return;
+    await db.packing.update(id, { highlight: !item.highlight || undefined });
+  },
+
+  /** restore a just-deleted item (undo) */
+  async restore(item: import('@/domain/types').PackingItem): Promise<void> {
+    await db.packing.put(item);
   },
 
   async toggle(id: string): Promise<void> {
@@ -68,13 +83,20 @@ export const packingRepository = {
     await db.packing.where('tripId').equals(tripId).modify({ checked: false });
   },
 
-  async applyTemplate(tripId: string): Promise<void> {
+  /** apply the template for one owner (or shared); returns ids for undo */
+  async applyTemplate(tripId: string, ownerId?: string): Promise<string[]> {
     const items: PackingItem[] = SUMMER_JP_TEMPLATE.map((t) => ({
       id: newId(),
       tripId,
       checked: false,
+      ownerId,
       ...t,
     }));
     await db.packing.bulkAdd(items);
+    return items.map((i) => i.id);
+  },
+
+  async removeMany(ids: string[]): Promise<void> {
+    await db.packing.bulkDelete(ids);
   },
 };

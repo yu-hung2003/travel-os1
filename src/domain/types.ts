@@ -212,6 +212,10 @@ export type BagKind = 'carry' | 'checked';
 export interface PackingItem {
   id: ID;
   tripId: ID;
+  /** which traveler this item belongs to; undefined = 共用 */
+  ownerId?: ID;
+  /** soft-red emphasis for critical items (e.g. passports) */
+  highlight?: boolean;
   /** carry-on (隨身) vs checked luggage (託運大件) */
   bag: BagKind;
   category: string;          // e.g. '證件' | '電子' | '防暑' | '衣物'
