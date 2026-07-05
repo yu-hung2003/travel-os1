@@ -36,6 +36,10 @@ export const tripRepository = {
     });
   },
 
+  async updateAccommodationLocation(id: string, location: import('@/domain/types').GeoPoint): Promise<void> {
+    await db.accommodations.update(id, { location });
+  },
+
   getAccommodation(id: string): Promise<Accommodation | undefined> {
     return db.accommodations.get(id);
   },

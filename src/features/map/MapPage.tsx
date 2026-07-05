@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { MapContainer, Marker, Popup, TileLayer, useMap } from 'react-leaflet';
 import L from 'leaflet';
@@ -7,7 +8,9 @@ import { db } from '@/data/db';
 import { tripRepository } from '@/data/repositories/tripRepository';
 import { placeRepository } from '@/data/repositories/placeRepository';
 import { typeMeta } from '@/features/timeline/eventMeta';
-import { gmapsDirectionsUrl } from '@/shared/utils/maps';
+import { gmapsDirectionsUrl, parseCoords, parseGoogleMapsUrl } from '@/shared/utils/maps';
+import { eventRepository } from '@/data/repositories/eventRepository';
+import { BottomSheet } from '@/shared/components/BottomSheet';
 import { useOnline } from '@/shared/hooks/useOnline';
 import type { GeoPoint } from '@/domain/types';
 
@@ -26,6 +29,9 @@ interface InventoryRow {
   subtitle: string;
   hasCoords: boolean;
   hint: string; // how to add coords when missing
+  source: 'event' | 'acc' | 'place';
+  rawId: string;
+  dayId?: string; // events: jump target
 }
 
 function emojiIcon(emoji: string): L.DivIcon {
@@ -67,6 +73,30 @@ export default function MapPage() {
   });
 
   const [showList, setShowList] = useState(false);
+  const [editingRow, setEditingRow] = useState<InventoryRow | null>(null);
+  const [coordInput, setCoordInput] = useState('');
+  const [coordMsg, setCoordMsg] = useState<string | null>(null);
+
+  const saveCoords = async () => {
+    if (!editingRow) return;
+    const text = coordInput.trim();
+    const point = parseCoords(text) ?? parseGoogleMapsUrl(text)?.location;
+    if (!point) {
+      setCoordMsg('無法解析。可貼「34.6687, 135.5013」格式,或 Google Maps 完整連結(短連結請先開啟後複製完整網址)。');
+      return;
+    }
+    const { placeRepository: placeRepo } = await import('@/data/repositories/placeRepository');
+    if (editingRow.source === 'event') {
+      await eventRepository.updateInfo(editingRow.rawId, { location: point });
+    } else if (editingRow.source === 'place') {
+      await placeRepo.update(editingRow.rawId, { location: point });
+    } else {
+      await tripRepository.updateAccommodationLocation(editingRow.rawId, point);
+    }
+    setEditingRow(null);
+    setCoordInput('');
+    setCoordMsg(null);
+  };
 
   const data = useLiveQuery(async () => {
     if (!trip) return { pins: [] as Pin[], inventory: [] as InventoryRow[] };
@@ -97,7 +127,10 @@ export default function MapPage() {
         title: e.title,
         subtitle,
         hasCoords: !!e.location,
-        hint: '行程頁點此事件 → ℹ️ 景點/店家資訊 → 填入座標',
+        hint: '貼上座標或 Google Maps 連結即可',
+        source: 'event',
+        rawId: e.id,
+        dayId: e.dayId,
       });
       if (e.location) {
         out.push({
@@ -116,7 +149,9 @@ export default function MapPage() {
         title: a.name,
         subtitle: '住宿',
         hasCoords: !!a.location,
-        hint: '住宿座標由行程資料提供',
+        hint: '貼上座標或 Google Maps 連結即可',
+        source: 'acc',
+        rawId: a.id,
       });
       if (a.location) {
         out.push({ id: `acc-${a.id}`, point: a.location, emoji: '🏨', title: a.name, subtitle: '住宿' });
@@ -130,7 +165,9 @@ export default function MapPage() {
         title: p.name,
         subtitle: `口袋名單${p.priceRange ? ` · ${p.priceRange}` : ''}`,
         hasCoords: !!p.location,
-        hint: '口袋名單點此店家編輯 → 填入座標(可用 GM 連結帶入)',
+        hint: '貼上座標或 Google Maps 連結即可',
+        source: 'place',
+        rawId: p.id,
       });
       if (p.location) {
         out.push({
@@ -216,27 +253,81 @@ export default function MapPage() {
           </p>
           <ul className="mt-2 divide-y divide-line/60">
             {[...inventory].sort((a, b) => Number(a.hasCoords) - Number(b.hasCoords)).map((r) => (
-              <li key={r.id} className="flex items-start gap-3 py-2.5">
-                <span className="text-lg">{r.emoji}</span>
-                <span className="min-w-0 flex-1">
-                  <span className="block text-sm font-semibold leading-snug">{r.title}</span>
-                  <span className="block text-xs text-ink-3">{r.subtitle}</span>
-                  {!r.hasCoords && (
-                    <span className="mt-0.5 block text-xs text-warning">補座標:{r.hint}</span>
-                  )}
-                </span>
-                <span
-                  className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                    r.hasCoords ? 'bg-success/15 text-success' : 'bg-warning/15 text-warning'
-                  }`}
+              <li key={r.id}>
+                <button
+                  className="flex w-full items-start gap-3 py-2.5 text-left active:opacity-70"
+                  onClick={() => {
+                    setEditingRow(r);
+                    setCoordInput('');
+                    setCoordMsg(null);
+                  }}
                 >
-                  {r.hasCoords ? '✅ 已在地圖' : '⚠️ 未設座標'}
-                </span>
+                  <span className="text-lg">{r.emoji}</span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-semibold leading-snug">{r.title}</span>
+                    <span className="block text-xs text-ink-3">{r.subtitle}</span>
+                    {!r.hasCoords && (
+                      <span className="mt-0.5 block text-xs text-warning">點擊補座標:{r.hint}</span>
+                    )}
+                  </span>
+                  <span
+                    className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                      r.hasCoords ? 'bg-success/15 text-success' : 'bg-warning/15 text-warning'
+                    }`}
+                  >
+                    {r.hasCoords ? '✅ 已在地圖' : '⚠️ 未設座標'}
+                  </span>
+                </button>
               </li>
             ))}
           </ul>
         </section>
       )}
+
+      <BottomSheet
+        open={editingRow !== null}
+        onClose={() => setEditingRow(null)}
+        title={editingRow ? `${editingRow.emoji} ${editingRow.title}` : ''}
+      >
+        {editingRow && (
+          <div className="flex flex-col gap-3">
+            <p className="text-xs text-ink-3">
+              {editingRow.hasCoords ? '修改座標:' : '補上座標:'}
+              貼「緯度, 經度」(Google Maps 長按地點複製)或 Google Maps 完整連結。
+            </p>
+            <input
+              value={coordInput}
+              onChange={(e) => setCoordInput(e.target.value)}
+              placeholder="34.6687, 135.5013 或 https://www.google.com/maps/place/…"
+              className="w-full rounded-xl border border-line bg-surface p-3 text-sm outline-none focus:border-primary"
+            />
+            {coordMsg && <p className="text-xs text-danger">{coordMsg}</p>}
+            <button
+              disabled={!coordInput.trim()}
+              onClick={saveCoords}
+              className="rounded-xl bg-primary py-3 text-sm font-bold text-primary-ink disabled:opacity-40 active:opacity-80"
+            >
+              儲存座標
+            </button>
+            {editingRow.source === 'event' && editingRow.dayId && (
+              <Link
+                to={`/timeline?day=${editingRow.dayId}`}
+                className="rounded-xl bg-surface-3 py-3 text-center text-sm font-semibold text-ink-2 active:opacity-70"
+              >
+                ↗ 前往行程頁編輯此事件
+              </Link>
+            )}
+            {editingRow.source === 'place' && (
+              <Link
+                to="/places"
+                className="rounded-xl bg-surface-3 py-3 text-center text-sm font-semibold text-ink-2 active:opacity-70"
+              >
+                ↗ 前往口袋名單編輯
+              </Link>
+            )}
+          </div>
+        )}
+      </BottomSheet>
 
       <p className="text-center text-xs text-ink-3">
         行程景點・住宿・口袋名單自動上圖;點 marker 可直接導航
