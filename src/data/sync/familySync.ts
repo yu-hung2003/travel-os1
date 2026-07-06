@@ -16,7 +16,7 @@ import { getFirestoreDb, isFirebaseConfigured } from '@/data/sync/firebase';
 
 const SYNC_TABLES = [
   'trips', 'days', 'dayVersions', 'events', 'expenses',
-  'packing', 'accommodations', 'transfers', 'places',
+  'packing', 'accommodations', 'transfers', 'places', 'shopping',
 ] as const;
 type SyncTable = (typeof SYNC_TABLES)[number];
 

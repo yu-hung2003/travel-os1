@@ -267,3 +267,16 @@ export interface UserPref {
   homeCurrency: string;
   activeTripId?: ID;
 }
+
+/** shared shopping / errand list (drugstore hauls, gifts, 代購) */
+export interface ShoppingItem {
+  id: ID;
+  tripId: ID;
+  name: string;
+  forWho?: string;           // 誰託買/給誰
+  estPrice?: number;         // 預估 ¥
+  qty: number;
+  checked: boolean;
+  note?: string;
+  createdAt: number;
+}

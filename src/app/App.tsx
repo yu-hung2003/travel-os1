@@ -14,6 +14,9 @@ const ExpensePage = lazy(() => import('@/features/expense/ExpensePage'));
 const MorePage = lazy(() => import('@/features/more/MorePage'));
 const PackingPage = lazy(() => import('@/features/packing/PackingPage'));
 const PlacesPage = lazy(() => import('@/features/places/PlacesPage'));
+const ShoppingPage = lazy(() => import('@/features/shopping/ShoppingPage'));
+const EmergencyPage = lazy(() => import('@/features/emergency/EmergencyPage'));
+const PrintPage = lazy(() => import('@/features/print/PrintPage'));
 
 function Shell() {
   return (
@@ -31,7 +34,7 @@ function Shell() {
           <Outlet />
         </Suspense>
       </main>
-      <BottomNav />
+      <span className="print:hidden"><BottomNav /></span>
     </div>
   );
 }
@@ -49,6 +52,9 @@ const router = createBrowserRouter([
       { path: '/more', element: <MorePage /> },
       { path: '/packing', element: <PackingPage /> },
       { path: '/places', element: <PlacesPage /> },
+      { path: '/shopping', element: <ShoppingPage /> },
+      { path: '/emergency', element: <EmergencyPage /> },
+      { path: '/print', element: <PrintPage /> },
     ],
   },
 ]);

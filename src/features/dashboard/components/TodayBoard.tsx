@@ -5,7 +5,7 @@ import { db } from '@/data/db';
 import { tripRepository } from '@/data/repositories/tripRepository';
 import { typeMeta } from '@/features/timeline/eventMeta';
 import { ProgressRing } from '@/features/dashboard/components/ProgressRing';
-import { gmapsDirectionsUrl } from '@/shared/utils/maps';
+import { gmapsDirectionsUrl, gmapsSearchUrl } from '@/shared/utils/maps';
 import { WeatherCard } from '@/features/dashboard/components/WeatherCard';
 import { SmartSuggestions } from '@/features/dashboard/components/SmartSuggestions';
 import { CurrencyConverter } from '@/shared/components/CurrencyConverter';
@@ -69,6 +69,33 @@ export function TodayBoard({ trip, day, now, preview = false }: Props) {
 
   if (!events) return null;
 
+  const shareToday = async () => {
+    const lines: string[] = [];
+    lines.push(`【Day ${day.dayIndex} · ${format(new Date(`${day.date}T00:00`), 'M/d')}(${WEEKDAY[new Date(`${day.date}T00:00`).getDay()]})】${day.title ?? ''}`);
+    for (const e of events) {
+      if (e.status === 'skipped') continue;
+      const time = e.startTime ? `${e.startTime} ` : '';
+      const tag = e.status === 'postponed' ? '(延後)' : e.status === 'completed' ? '✅' : '';
+      lines.push(`${time}${typeMeta[e.type].emoji} ${e.title} ${tag}`.trim());
+      if (e.alert && e.status === 'scheduled') lines.push(`　⚠️ ${e.alert}`);
+    }
+    if (accommodation) lines.push(`🏨 今晚:${accommodation.name}`);
+    lines.push('— Travel OS');
+    const text = lines.join('\n');
+    if (navigator.share) {
+      try {
+        await navigator.share({ text });
+        return;
+      } catch { /* user cancelled → fall through to clipboard */ }
+    }
+    try {
+      await navigator.clipboard.writeText(text);
+      alert('已複製今日行程,貼到 LINE 群組吧!');
+    } catch {
+      alert('無法自動複製,請手動長按選取。');
+    }
+  };
+
   const nowMins = now.getHours() * 60 + now.getMinutes();
   const scheduled = events.filter((e) => e.status === 'scheduled' && e.startTime);
 
@@ -113,6 +140,32 @@ export function TodayBoard({ trip, day, now, preview = false }: Props) {
           sublabel="今日完成"
         />
       </section>
+
+      {/* quick actions */}
+      <div className="grid grid-cols-2 gap-3">
+        <button
+          onClick={shareToday}
+          className="card flex items-center justify-center gap-2 py-3 text-sm font-bold text-ink-2 active:opacity-70"
+        >
+          📤 分享今日行程
+        </button>
+        {accommodation ? (
+          <a
+            href={
+              accommodation.location
+                ? gmapsDirectionsUrl({ destination: accommodation.location })
+                : gmapsSearchUrl(accommodation.name)
+            }
+            target="_blank"
+            rel="noreferrer"
+            className="card flex items-center justify-center gap-2 py-3 text-sm font-bold text-primary active:opacity-70"
+          >
+            🏨 回飯店
+          </a>
+        ) : (
+          <span />
+        )}
+      </div>
 
       {/* next / ongoing event */}
       {focusEvent ? (

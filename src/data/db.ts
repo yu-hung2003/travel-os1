@@ -2,7 +2,7 @@ import Dexie, { type Table } from 'dexie';
 import type {
   Trip, TripDay, TimelineEvent, Expense, JournalEntry,
   PackingItem, Accommodation, WeatherCache, UserPref,
-  Transfer, Place, DayVersion,
+  Transfer, Place, DayVersion, ShoppingItem,
 } from '@/domain/types';
 
 /**
@@ -24,6 +24,7 @@ export class TravelOSDB extends Dexie {
   transfers!: Table<Transfer, string>;
   places!: Table<Place, string>;
   dayVersions!: Table<DayVersion, string>;
+  shopping!: Table<ShoppingItem, string>;
 
   constructor() {
     super('travel-os');
@@ -37,6 +38,10 @@ export class TravelOSDB extends Dexie {
       accommodations: 'id, tripId, checkInDate',
       weatherCache: 'locationKey, fetchedAt',
       prefs: 'key',
+    });
+    // v5: shared shopping list
+    this.version(5).stores({
+      shopping: 'id, tripId',
     });
     // v4: duration-based scheduling + per-day itinerary versions
     this.version(4).stores({

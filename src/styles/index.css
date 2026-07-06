@@ -61,3 +61,9 @@ body {
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+
+@media print {
+  html, body, #root { height: auto !important; }
+  main { overflow: visible !important; height: auto !important; }
+  body { background: white !important; color: black !important; }
+}

@@ -13,7 +13,7 @@ const options: { value: ThemePref; label: string }[] = [
 ];
 
 const ORDER_KEY = 'travelos-more-order';
-const CARD_IDS = ['sync', 'places', 'packing', 'converter', 'theme'] as const;
+const CARD_IDS = ['sync', 'places', 'packing', 'shopping', 'emergency', 'print', 'converter', 'theme'] as const;
 type CardId = (typeof CARD_IDS)[number];
 
 const cardLabels: Record<CardId, string> = {
@@ -22,6 +22,9 @@ const cardLabels: Record<CardId, string> = {
   packing: '🧳 行李清單',
   converter: '💱 匯率試算',
   theme: '🎨 外觀主題',
+  shopping: '🛒 血拼清單',
+  emergency: '🆘 緊急資訊',
+  print: '🖨️ 列印行程表',
 };
 
 function loadOrder(): CardId[] {
@@ -94,6 +97,33 @@ export default function MorePage() {
         <div>
           <h2 className="text-sm font-bold">🧳 行李清單</h2>
           <p className="mt-0.5 text-xs text-ink-3">成員分頁 + 隨身/託運分區,重要物品醒目標示</p>
+        </div>
+        <span className="text-ink-3">›</span>
+      </Link>
+    ),
+    shopping: (
+      <Link to="/shopping" className="card flex items-center justify-between p-5 active:opacity-80">
+        <div>
+          <h2 className="text-sm font-bold">🛒 血拼清單</h2>
+          <p className="mt-0.5 text-xs text-ink-3">藥妝、伴手禮、代購託買——全家共享,誰在店裡誰買</p>
+        </div>
+        <span className="text-ink-3">›</span>
+      </Link>
+    ),
+    emergency: (
+      <Link to="/emergency" className="card flex items-center justify-between p-5 active:opacity-80">
+        <div>
+          <h2 className="text-sm font-bold">🆘 緊急資訊</h2>
+          <p className="mt-0.5 text-xs text-ink-3">110/119、駐大阪辦事處、飯店地址、走散集合點,離線可用</p>
+        </div>
+        <span className="text-ink-3">›</span>
+      </Link>
+    ),
+    print: (
+      <Link to="/print" className="card flex items-center justify-between p-5 active:opacity-80">
+        <div>
+          <h2 className="text-sm font-bold">🖨️ 列印行程表</h2>
+          <p className="mt-0.5 text-xs text-ink-3">A4 全程行程表,列印或存 PDF 給長輩備援</p>
         </div>
         <span className="text-ink-3">›</span>
       </Link>
