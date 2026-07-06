@@ -83,6 +83,10 @@ export const eventRepository = {
     await db.events.update(eventId, { durationMin, updatedAt: Date.now() });
   },
 
+  async updateFixedStart(eventId: string, fixedStart: string | undefined): Promise<void> {
+    await db.events.update(eventId, { fixedStart: fixedStart || undefined, updatedAt: Date.now() });
+  },
+
   async updateHours(eventId: string, openUntil?: string, lastEntry?: string): Promise<void> {
     await db.events.update(eventId, {
       openUntil: openUntil || undefined,

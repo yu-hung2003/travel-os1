@@ -86,6 +86,8 @@ export interface TimelineEvent {
   versionId?: ID;
   /** planned stay / ride duration in minutes; times are computed from it */
   durationMin?: number;
+  /** pin to an explicit start time ('HH:mm'); later events flow from its end */
+  fixedStart?: string;
   /** legacy fixed times (pre-v4) — still used as fallback for imports */
   startTime?: string;
   endTime?: string;

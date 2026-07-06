@@ -38,6 +38,10 @@ export interface Slot {
   departMin: number;
   arrive: string;
   depart: string;
+  /** event is pinned to an explicit time */
+  pinned?: boolean;
+  /** pinned time overlaps the previous event */
+  conflict?: boolean;
 }
 
 /** events must be in display order; skipped/postponed don't consume time */
@@ -50,14 +54,26 @@ export function computeSchedule(
   for (const e of events) {
     if (e.status === 'skipped' || e.status === 'postponed') continue;
     const dur = effectiveDuration(e);
+    let arrive = cursor;
+    let pinned = false;
+    let conflict = false;
+    if (e.fixedStart) {
+      // anchored event: jump to the pinned time (gaps between events are fine)
+      pinned = true;
+      const f = minutesOf(e.fixedStart);
+      if (f < cursor) conflict = true; // overlaps the previous event
+      arrive = f;
+    }
     const slot: Slot = {
-      arriveMin: cursor,
-      departMin: cursor + dur,
-      arrive: toHHMM(cursor),
-      depart: toHHMM(cursor + dur),
+      arriveMin: arrive,
+      departMin: arrive + dur,
+      arrive: toHHMM(arrive),
+      depart: toHHMM(arrive + dur),
+      pinned,
+      conflict,
     };
     out.set(e.id, slot);
-    cursor += dur;
+    cursor = arrive + dur;
   }
   return out;
 }

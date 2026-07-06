@@ -27,6 +27,8 @@ export function EventSheet({ event, days, dayEvents = [], onClose }: Props) {
   const [durText, setDurText] = useState('');
   const [openUntil, setOpenUntil] = useState('');
   const [lastEntry, setLastEntry] = useState('');
+  const [fixedStart, setFixedStart] = useState('');
+  const [fixedEnd, setFixedEnd] = useState('');
   const [transit, setTransit] = useState<TransitInfo>({ mode: 'train' });
 
   useEffect(() => {
@@ -36,6 +38,8 @@ export function EventSheet({ event, days, dayEvents = [], onClose }: Props) {
     setDurText(event?.durationMin ? String(event.durationMin) : '');
     setOpenUntil(event?.openUntil ?? '');
     setLastEntry(event?.lastEntry ?? '');
+    setFixedStart(event?.fixedStart ?? '');
+    setFixedEnd('');
     setTicketText(event?.ticketPerAdult != null ? String(event.ticketPerAdult) : '');
     setNeedsBooking(event?.needsBooking);
     setHasLockers(event?.hasLockers);
@@ -388,6 +392,34 @@ export function EventSheet({ event, days, dayEvents = [], onClose }: Props) {
               ))}
             </div>
           </div>
+          <div className="rounded-xl bg-surface-3 p-3">
+            <p className="text-xs font-semibold text-ink-2">
+              🔒 指定時間(選填)— 預約/預訂類行程鎖定明確時刻,之後的行程從其結束時間繼續接續
+            </p>
+            <div className="mt-1.5 grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-[11px] font-semibold text-ink-3">開始</label>
+                <input type="time" value={fixedStart}
+                  onChange={(e) => setFixedStart(e.target.value)}
+                  className="mt-0.5 w-full rounded-xl border border-line bg-surface p-2.5 text-sm outline-none focus:border-primary" />
+              </div>
+              <div>
+                <label className="text-[11px] font-semibold text-ink-3">結束(選填,自動算停留)</label>
+                <input type="time" value={fixedEnd}
+                  onChange={(e) => setFixedEnd(e.target.value)}
+                  className="mt-0.5 w-full rounded-xl border border-line bg-surface p-2.5 text-sm outline-none focus:border-primary" />
+              </div>
+            </div>
+            {fixedStart && (
+              <button
+                className="mt-2 text-xs font-semibold text-danger active:opacity-70"
+                onClick={() => { setFixedStart(''); setFixedEnd(''); }}
+              >
+                ✕ 清除指定時間(恢復自動接續)
+              </button>
+            )}
+          </div>
+
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-semibold text-ink-2">營業至(選填)</label>
@@ -404,11 +436,18 @@ export function EventSheet({ event, days, dayEvents = [], onClose }: Props) {
           <button
             className="rounded-xl bg-primary py-3 text-sm font-bold text-primary-ink active:opacity-80"
             onClick={async () => {
-              const dur = Number(durText);
+              let dur = Number(durText);
+              if (fixedStart && fixedEnd) {
+                const [sh, sm] = fixedStart.split(':').map(Number);
+                const [eh, em] = fixedEnd.split(':').map(Number);
+                const diff = eh * 60 + em - (sh * 60 + sm);
+                if (diff > 0) dur = diff;
+              }
               await eventRepository.updateDuration(
                 event.id,
                 Number.isFinite(dur) && dur > 0 ? Math.round(dur) : undefined,
               );
+              await eventRepository.updateFixedStart(event.id, fixedStart || undefined);
               await eventRepository.updateHours(event.id, openUntil, lastEntry);
               onClose();
             }}

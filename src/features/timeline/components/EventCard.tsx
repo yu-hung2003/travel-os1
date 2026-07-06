@@ -50,7 +50,7 @@ export function EventCard({ event, onOpen, slot, closing, staleTransit = false }
           <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
             {slot ? (
               <span className={`text-xs font-semibold tabular-nums ${dimmed ? 'text-ink-3' : 'text-primary'}`}>
-                {slot.arrive}–{slot.depart}
+                {slot.pinned && '🔒'}{slot.arrive}–{slot.depart}
               </span>
             ) : null}
             <span className="rounded-full bg-surface-3 px-1.5 py-0.5 text-[10px] font-semibold text-ink-2">
@@ -113,6 +113,11 @@ export function EventCard({ event, onOpen, slot, closing, staleTransit = false }
                 event.hasLockers === true ? '🧳 可寄物' : event.hasLockers === false ? '🧳 無寄物' : undefined,
                 event.hasToilets === true ? '🚻 有廁所' : event.hasToilets === false ? '🚻 無廁所' : undefined,
               ].filter(Boolean).join(' · ')}
+            </span>
+          )}
+          {slot?.conflict && event.status === 'scheduled' && (
+            <span className="mt-1 block rounded-lg bg-warning/15 px-2 py-1 text-xs font-semibold leading-relaxed text-warning">
+              ⚠️ 指定時間與前一行程重疊,請調整順序或時間
             </span>
           )}
           {staleTransit && (
