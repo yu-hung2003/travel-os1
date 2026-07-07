@@ -282,3 +282,12 @@ export interface ShoppingItem {
   note?: string;
   createdAt: number;
 }
+
+/** compressed photo attached to a shopping item (synced as base64) */
+export interface ShoppingPhoto {
+  id: ID;
+  tripId: ID;
+  itemId: ID;
+  dataUrl: string;           // compressed JPEG data URL
+  createdAt: number;
+}

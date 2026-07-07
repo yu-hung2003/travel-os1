@@ -5,6 +5,7 @@ import { db } from '@/data/db';
 import { tripRepository } from '@/data/repositories/tripRepository';
 import {
   createRoom, getSyncCode, joinRoom, leaveSync, getLastReceivedAt,
+  getLastAppliedAt, forceSync, getMemberCount,
 } from '@/data/sync/familySync';
 import { isFirebaseConfigured } from '@/data/sync/firebase';
 import { BottomSheet } from '@/shared/components/BottomSheet';
@@ -17,11 +18,39 @@ export function FamilySyncCard() {
   const [msg, setMsg] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [lastRx, setLastRx] = useState<number | null>(getLastReceivedAt());
+  const [lastApply, setLastApply] = useState<number | null>(getLastAppliedAt());
+  const [members, setMembers] = useState<number | null>(null);
+  const [forcing, setForcing] = useState(false);
+  const [forceMsg, setForceMsg] = useState<string | null>(null);
 
   useEffect(() => {
-    const t = setInterval(() => setLastRx(getLastReceivedAt()), 5000);
+    const t = setInterval(() => {
+      setLastRx(getLastReceivedAt());
+      setLastApply(getLastAppliedAt());
+    }, 5000);
     return () => clearInterval(t);
   }, []);
+
+  useEffect(() => {
+    if (code) void getMemberCount().then(setMembers);
+  }, [code]);
+
+  const runForceSync = async () => {
+    setForcing(true);
+    setForceMsg(null);
+    try {
+      const n = await forceSync();
+      setForceMsg(`✅ 已重新套用雲端最新狀態(${n} 筆)`);
+      setLastApply(getLastAppliedAt());
+      setLastRx(getLastReceivedAt());
+      void getMemberCount().then(setMembers);
+      setTimeout(() => setForceMsg(null), 4000);
+    } catch {
+      setForceMsg('同步失敗,請確認網路後再試。');
+    } finally {
+      setForcing(false);
+    }
+  };
 
   const trip = useLiveQuery(async () => {
     const pref = await db.prefs.get('default');
@@ -105,11 +134,25 @@ export function FamilySyncCard() {
               {copied ? '✅ 已複製' : '點擊複製'}
             </span>
           </button>
-          <p className="mt-2 text-[11px] tabular-nums text-ink-3">
-            {lastRx
-              ? `🟢 連線正常 · 最後收到同步 ${format(lastRx, 'HH:mm:ss')}`
-              : '🟡 尚未收到伺服器回應,請確認網路'}
-          </p>
+          <div className="mt-2 space-y-0.5 text-[11px] tabular-nums text-ink-3">
+            <p>
+              {lastRx
+                ? `🟢 連線正常 · ${format(lastRx, 'HH:mm:ss')}`
+                : '🟡 尚未收到伺服器回應,請確認網路'}
+            </p>
+            <p>
+              📥 最後套用夥伴變更:{lastApply ? format(lastApply, 'M/d HH:mm:ss') : '尚無'}
+            </p>
+            {members !== null && <p>👥 此同步碼共 {members} 台裝置使用</p>}
+          </div>
+          <button
+            disabled={forcing}
+            onClick={runForceSync}
+            className="mt-2 w-full rounded-xl bg-surface-3 py-2.5 text-sm font-bold text-ink-2 disabled:opacity-40 active:opacity-70"
+          >
+            {forcing ? '同步中…' : '🔄 立即同步(強制撈取最新狀態)'}
+          </button>
+          {forceMsg && <p className="mt-1.5 text-xs text-success">{forceMsg}</p>}
           <button
             className="mt-1 text-xs font-semibold text-danger active:opacity-70"
             onClick={() => setSheet('leave')}

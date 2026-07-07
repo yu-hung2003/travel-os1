@@ -1,5 +1,5 @@
 import {
-  collection, doc, getDoc, onSnapshot, setDoc, writeBatch,
+  collection, doc, getDoc, getDocs, onSnapshot, setDoc, writeBatch,
 } from 'firebase/firestore';
 import Dexie from 'dexie';
 import { db } from '@/data/db';
@@ -16,12 +16,13 @@ import { getFirestoreDb, isFirebaseConfigured } from '@/data/sync/firebase';
 
 const SYNC_TABLES = [
   'trips', 'days', 'dayVersions', 'events', 'expenses',
-  'packing', 'accommodations', 'transfers', 'places', 'shopping',
+  'packing', 'accommodations', 'transfers', 'places', 'shopping', 'photos',
 ] as const;
 type SyncTable = (typeof SYNC_TABLES)[number];
 
 const CODE_KEY = 'travelos-sync-code';
 const LAST_RX_KEY = 'travelos-sync-last-rx';
+const LAST_APPLY_KEY = 'travelos-sync-last-apply';
 const CLIENT_KEY = 'travelos-client-id';
 
 function clientId(): string {
@@ -113,6 +114,7 @@ function startListener(code: string): void {
           if (!SYNC_TABLES.includes(d.table)) continue;
           if (d.deleted) await db.table(d.table).delete(d.key);
           else if (d.data) await db.table(d.table).put(d.data);
+          localStorage.setItem(LAST_APPLY_KEY, String(Date.now()));
         }
       } catch (e) {
         console.warn('[sync] apply failed', e);
@@ -170,6 +172,7 @@ export async function createRoom(tripId: string): Promise<string> {
   localStorage.setItem(CODE_KEY, code);
   installHooks();
   startListener(code);
+  void touchPresence(code);
   return code;
 }
 
@@ -183,6 +186,7 @@ export async function joinRoom(rawCode: string): Promise<void> {
   localStorage.setItem(CODE_KEY, code);
   installHooks();
   startListener(code);
+  void touchPresence(code);
 }
 
 /** Stop syncing on this device; local data stays intact. */
@@ -199,6 +203,7 @@ export function resumeSyncIfEnabled(): void {
   try {
     installHooks();
     startListener(code);
+    void touchPresence(code);
   } catch (e) {
     console.warn('[sync] resume failed', e);
   }
@@ -207,4 +212,70 @@ export function resumeSyncIfEnabled(): void {
 export function getLastReceivedAt(): number | null {
   const v = localStorage.getItem(LAST_RX_KEY);
   return v ? Number(v) : null;
+}
+
+export function getLastAppliedAt(): number | null {
+  const v = localStorage.getItem(LAST_APPLY_KEY);
+  return v ? Number(v) : null;
+}
+
+/** leave a presence mark on the room doc (no rules change needed) */
+async function touchPresence(code: string): Promise<void> {
+  try {
+    const fs = getFirestoreDb();
+    await setDoc(
+      doc(fs, 'rooms', code),
+      { members: { [clientId()]: { lastSeenAt: Date.now() } } },
+      { merge: true },
+    );
+  } catch { /* presence is best-effort */ }
+}
+
+/** how many devices have used this sync code */
+export async function getMemberCount(): Promise<number | null> {
+  const code = getSyncCode();
+  if (!code || !isFirebaseConfigured()) return null;
+  try {
+    const fs = getFirestoreDb();
+    const room = await getDoc(doc(fs, 'rooms', code));
+    const members = (room.data() as { members?: Record<string, unknown> } | undefined)?.members;
+    return members ? Object.keys(members).length : 1;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Force-sync: fetch ALL room records from the server and apply them,
+ * then rebuild the realtime listener. Guarantees convergence even if
+ * the push channel missed events.
+ */
+export async function forceSync(): Promise<number> {
+  const code = getSyncCode();
+  if (!code || !isFirebaseConfigured()) return 0;
+  const fs = getFirestoreDb();
+  const snap = await getDocs(collection(fs, 'rooms', code, 'records'));
+  let applied = 0;
+  applyingRemote = true;
+  try {
+    for (const d of snap.docs) {
+      const r = d.data() as {
+        table: SyncTable; key: string; data?: Record<string, unknown>; deleted?: boolean;
+      };
+      if (!SYNC_TABLES.includes(r.table)) continue;
+      if (r.deleted) await db.table(r.table).delete(r.key);
+      else if (r.data) await db.table(r.table).put(r.data);
+      applied += 1;
+    }
+  } finally {
+    applyingRemote = false;
+  }
+  localStorage.setItem(LAST_APPLY_KEY, String(Date.now()));
+  localStorage.setItem(LAST_RX_KEY, String(Date.now()));
+  // rebuild the listener
+  unsubscribe?.();
+  unsubscribe = null;
+  startListener(code);
+  void touchPresence(code);
+  return applied;
 }
