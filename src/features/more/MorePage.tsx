@@ -13,7 +13,7 @@ const options: { value: ThemePref; label: string }[] = [
 ];
 
 const ORDER_KEY = 'travelos-more-order';
-const CARD_IDS = ['sync', 'places', 'packing', 'shopping', 'emergency', 'print', 'converter', 'theme'] as const;
+const CARD_IDS = ['sync', 'summary', 'places', 'packing', 'shopping', 'phrases', 'emergency', 'print', 'converter', 'theme'] as const;
 type CardId = (typeof CARD_IDS)[number];
 
 const cardLabels: Record<CardId, string> = {
@@ -25,6 +25,8 @@ const cardLabels: Record<CardId, string> = {
   shopping: '🛒 血拼清單',
   emergency: '🆘 緊急資訊',
   print: '🖨️ 列印行程表',
+  phrases: '🈺 溝通小卡',
+  summary: '🏁 旅程總結',
 };
 
 function loadOrder(): CardId[] {
@@ -124,6 +126,24 @@ export default function MorePage() {
         <div>
           <h2 className="text-sm font-bold">🖨️ 列印行程表</h2>
           <p className="mt-0.5 text-xs text-ink-3">A4 全程行程表,列印或存 PDF 給長輩備援</p>
+        </div>
+        <span className="text-ink-3">›</span>
+      </Link>
+    ),
+    phrases: (
+      <Link to="/phrases" className="card flex items-center justify-between p-5 active:opacity-80">
+        <div>
+          <h2 className="text-sm font-bold">🈺 溝通小卡</h2>
+          <p className="mt-0.5 text-xs text-ink-3">常用日文句 + 自訂句,點了放大給店員看,離線可用</p>
+        </div>
+        <span className="text-ink-3">›</span>
+      </Link>
+    ),
+    summary: (
+      <Link to="/summary" className="card flex items-center justify-between p-5 active:opacity-80">
+        <div>
+          <h2 className="text-sm font-bold">🏁 旅程總結</h2>
+          <p className="mt-0.5 text-xs text-ink-3">花費統計、成員分帳結算、行程足跡、美食榜、日記——隨時可看</p>
         </div>
         <span className="text-ink-3">›</span>
       </Link>

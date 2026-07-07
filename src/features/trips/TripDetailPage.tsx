@@ -3,6 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { format, parseISO } from 'date-fns';
 import { tripRepository } from '@/data/repositories/tripRepository';
 import { TransferSection } from '@/features/trips/components/TransferSection';
+import { FlightSection } from '@/features/trips/components/FlightSection';
 
 const WEEKDAY = ['日', '一', '二', '三', '四', '五', '六'];
 
@@ -49,6 +50,8 @@ export default function TripDetailPage() {
           );
         })}
       </section>
+
+      <FlightSection tripId={trip.id} />
 
       <TransferSection tripId={trip.id} />
 
